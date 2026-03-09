@@ -28,3 +28,29 @@ The simulation explores how complex global patterns emerge from simple local int
 *   **Target:** Delphi 12, optimized for statistical physics and interactive visual complexity.
 
 Developed with a focus on self-organized systems, performance, and the aesthetic beauty of emergent collective behavior.
+
+## 🚀 Snapshots
+
+* Main Form
+![./Images/Snapshot_Form](./Images/Snapshot_Form.png)
+
+* Sample 1 (Vicsek Model Simulation)
+![./Images/Snapshot_Vicsek0](./Images/Snapshot_Vicsek0.png)
+
+* Sample 2 (Boids Model Simulation)
+![./Images/Snapshot_Boids0](./Images/Snapshot_Boids0.png)
+
+* Sample 3 (Boids Model Simulation)
+![./Images/Snapshot_Boids1](./Images/Snapshot_Boids1.png)
+
+* Sample 4 (Boids Model Simulation)
+![./Images/Snapshot_Boids2](./Images/Snapshot_Boids2.png)
+
+* Sample 5 (Boids Model Simulation)
+![./Images/Snapshot_Boids3](./Images/Snapshot_Boids3.png)
+
+* Sample 6 (Extra - Fractal)
+![./Images/Snapshot_Fractal](./Images/Snapshot_Fractal.png)
+
+* Sample 6 (Extra - Aquarium)
+![./Images/Snapshot_Aqua](./Images/Snapshot_Aqua.png)
