@@ -29,7 +29,9 @@ The simulation explores how complex global patterns emerge from simple local int
 *   **Concurrency:** `System.Threading` (TParallel)
 *   **Target:** Delphi 12, optimized for statistical physics and interactive visual complexity.
 
-Developed with a focus on self-organized systems, performance, and the aesthetic beauty of emergent collective behavior.
+*   **Helped by AI:** Much of the code in this program has been written with the help of Google Gemini.
+
+### Developed with a focus on self-organized systems, performance, and the aesthetic beauty of emergent collective behavior.
 
 ## 🚀 Snapshots
 
