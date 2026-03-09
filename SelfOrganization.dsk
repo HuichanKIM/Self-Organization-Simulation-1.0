@@ -16,8 +16,8 @@ File_13=TSourceModule,'E:\2024_DelphiLibs12\FastMM4-AVX\FastMM4.pas',0,1,19328,1
 File_14=TSourceModule,'E:\2024_DelphiLibs12\Image32\source\Img32.Clipper2.pas',0,1,1,87,24,0,0,,
 
 [Modules]
-Module0=E:\VicsekFmx\uAquarumSim.pas
-Module1=E:\VicsekFmx\SelfOrganization.dproj
+Module0=E:\VicsekFmx\SelfOrganization.dproj
+Module1=E:\VicsekFmx\uAquarumSim.pas
 Module2=E:\VicsekFmx\Unit_Main.pas
 Module3=E:\VicsekFmx\uBoidsSim2.pas
 Module4=E:\VicsekFmx\uBoidsSim1.pas
@@ -31,11 +31,11 @@ Module11=E:\VicsekFmx\uBoidsSim3.pas
 Count=12
 EditWindowCount=1
 
-[E:\VicsekFmx\uAquarumSim.pas]
-ModuleType=TSourceModule
-
 [E:\VicsekFmx\SelfOrganization.dproj]
 ModuleType=TBaseProject
+
+[E:\VicsekFmx\uAquarumSim.pas]
+ModuleType=TSourceModule
 
 [E:\VicsekFmx\Unit_Main.pas]
 ModuleType=TSourceModule
@@ -69,7 +69,7 @@ ModuleType=TSourceModule
 
 [EditWindow0]
 ViewCount=12
-CurrentEditView=E:\VicsekFmx\uAquarumSim.pas
+CurrentEditView=E:\VicsekFmx\SelfOrganization.dpr
 View0=0
 View1=1
 View2=2
@@ -118,9 +118,9 @@ BottomMiddelPanelData=0000080001020200000009000000446F636B5369746530100000004772
 [View0]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\SelfOrganization.dpr
-CursorX=4
-CursorY=64
-TopLine=16
+CursorX=29
+CursorY=4
+TopLine=1
 LeftCol=1
 Elisions=
 Bookmarks=
@@ -389,7 +389,7 @@ MaxLeft=-1
 MaxTop=-1
 ClientWidth=1562
 ClientHeight=4994
-TBDockHeight=8935
+TBDockHeight=7812
 LRDockWidth=1562
 Dockable=1
 StayOnTop=0
@@ -864,7 +864,7 @@ MaxLeft=-1
 MaxTop=-1
 ClientWidth=1473
 ClientHeight=2974
-TBDockHeight=8935
+TBDockHeight=7812
 LRDockWidth=1473
 Dockable=1
 StayOnTop=0
@@ -888,7 +888,7 @@ MaxLeft=-1
 MaxTop=-1
 ClientWidth=1562
 ClientHeight=2325
-TBDockHeight=8935
+TBDockHeight=7812
 LRDockWidth=1562
 Dockable=1
 StayOnTop=0
@@ -912,7 +912,7 @@ MaxLeft=-1
 MaxTop=-1
 ClientWidth=1473
 ClientHeight=4344
-TBDockHeight=8935
+TBDockHeight=7812
 LRDockWidth=1473
 Dockable=1
 StayOnTop=0

@@ -1,7 +1,7 @@
 program SelfOrganization;
 
 uses
-  FastMM4,
+  FastMM4,    { Optional ... }
   System.StartUpCopy,
   System.SysUtils,
   WinApi.Windows,
@@ -62,7 +62,7 @@ begin
   try
     Application.Initialize;
     Application.CreateForm(TMainForm, MainForm);
-  Application.Run;
+    Application.Run;
   finally
     CloseHandle(_mxHandle);
   end;
