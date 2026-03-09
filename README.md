@@ -2,6 +2,8 @@
 
 **Self-Organization Simulation** is a high-performance flocking algorithm implemented in **Delphi FMX (FireMonkey)**. This project merges classical Boids logic with the Vicsek Model to simulate sophisticated, self-organizing collective motion.
 
+![./Images/Snapshot_Form](./Images/Snapshot_Form.png)
+
 ## 🚀 Overview
 The simulation explores how complex global patterns emerge from simple local interactions. By combining two influential models, it demonstrates the transition from chaotic movement to highly ordered, synchronized structures without central control.
 
@@ -30,9 +32,6 @@ The simulation explores how complex global patterns emerge from simple local int
 Developed with a focus on self-organized systems, performance, and the aesthetic beauty of emergent collective behavior.
 
 ## 🚀 Snapshots
-
-* Main Form
-![./Images/Snapshot_Form](./Images/Snapshot_Form.png)
 
 * Sample 1 (Vicsek Model Simulation)
 ![./Images/Snapshot_Vicsek0](./Images/Snapshot_Vicsek0.png)
