@@ -1,23 +1,26 @@
 program SelfOrganization;
 
 uses
-  FastMM4,    { Optional ... }
+  FastMM4,
   System.StartUpCopy,
   System.SysUtils,
   WinApi.Windows,
   FMX.Forms,
+  FMX.Types,
   Unit_Main in 'Unit_Main.pas' {MainForm},
   uCommons in 'uCommons.pas',
   uVicsekSim0 in 'uVicsekSim0.pas',
+  uBoidsSim0 in 'uBoidsSim0.pas',
   uBoidsSim1 in 'uBoidsSim1.pas',
   uBoidsSim2 in 'uBoidsSim2.pas',
-  uBoidsSim0 in 'uBoidsSim0.pas',
   uBoidsSim3 in 'uBoidsSim3.pas',
   uVicsekSim_Base in 'uVicsekSim_Base.pas',
   uBoidsSim_Base in 'uBoidsSim_Base.pas',
   uFractalGenerator in 'uFractalGenerator.pas',
   uPhyllotaxisPlant in 'uPhyllotaxisPlant.pas',
-  uAquarumSim in 'uAquarumSim.pas';
+  uAquarumSim in 'uAquarumSim.pas',
+  uRainDropEngine in 'uRainDropEngine.pas',
+  uResources in 'uResources.pas' {Form_Resources};
 
 {$R *.res}
 
@@ -32,7 +35,8 @@ uses
 }
 
 {$SETPEFLAGS IMAGE_FILE_LARGE_ADDRESS_AWARE}    //  Good effects ...
-
+{.$DEFINE USE_GPUACCELERATION }                 //  for GPU-accelerated drawing implementation
+                                                //  Deprecated : cause Drawing FillPath on canvas is very slow than FillPolygon ...
 const
   _AppTitle: string   = 'Self Organization SImulation 2026';
   _AppWarning: string = 'Self Organization SImulation 2026 is already running...';
@@ -60,9 +64,14 @@ begin
 
   if _mxHandle <> 0 then
   try
+    {$IFDEF USE_GPUACCELERATION}
+    FMX.Types.GlobalUseGPUCanvas := True;
+    {$ENDIF}
+
     Application.Initialize;
     Application.CreateForm(TMainForm, MainForm);
-    Application.Run;
+  Application.CreateForm(TForm_Resources, Form_Resources);
+  Application.Run;
   finally
     CloseHandle(_mxHandle);
   end;

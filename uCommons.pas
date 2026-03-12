@@ -153,7 +153,7 @@ end;
 function LerpAngle(Current, Target, Amount: Double): Double;
 begin
   var _Diff: Double := Target - Current;
-  // 각도 차이를 -Pi ~ Pi 범위로 정규화
+  // Normalize the angle difference to the range -Pi to Pi
   while _Diff < -Pi do _Diff := _Diff + 2 * Pi;
   while _Diff > Pi do _Diff := _Diff - 2 * Pi;
 
@@ -225,18 +225,18 @@ begin
   if _Hue < 0.33 then
     begin
       _R := 255;
-      _G := Round(_Hue*765);
+      _G := Clamp(Round(_Hue*765), 0, 255);
       _B := 0;
     end else
   if _Hue < 0.66 then
     begin
       _R := 0;
       _G := 255;
-      _B := Round((_Hue - 0.33) * 765);
+      _B := Clamp(Round((_Hue - 0.33) * 765), 0, 255);
     end
   else
     begin
-      _R := Round((1 - _Hue) * 765);
+      _R := Clamp(Round((1 - _Hue) * 765), 0, 255);
       _G := 0;
       _B := 255;
     end;

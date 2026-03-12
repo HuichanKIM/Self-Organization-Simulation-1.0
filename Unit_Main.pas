@@ -22,6 +22,12 @@ uses
   System.UIConsts,
   System.Actions,
   FMX.ActnList,
+  System.Threading,
+  { Windows Specific Units }
+  Winapi.Windows,
+  Winapi.Messages,
+  Winapi.MMSystem,
+  FMX.Platform.Win,
   //
   uVicsekSim0,
   uBoidsSim0,
@@ -30,10 +36,15 @@ uses
   uBoidsSim3,
   uFractalGenerator,
   uPhyllotaxisPlant,
-  uAquarumSim;
+  uAquarumSim,
+  uRainDropEngine;
+
+const
+  // Define custom message ID
+  WM_SIMULATION_COMPLETE = WM_USER + 100;
 
 type
-  TModeSelection = (ms_None= -1, ms_Vicsek0 = 0, ms_Boidss0, ms_Boidss1, ms_Boidss2, ms_Boidss3, ms_Fractal, ms_Aquarium);
+  TModeSelection = (ms_None= -1, ms_Vicsek0 = 0, ms_Boidss0, ms_Boidss1, ms_Boidss2, ms_Boidss3, ms_Fractal, ms_Aquarium, ms_Raindrop);
 
   TMainForm = class(TForm)
     Timer_Engine: TTimer;
@@ -86,6 +97,8 @@ type
     Image_Template: TImage;
     Circle_Logo: TCircle;
     Label_Alarm: TLabel;
+    Action_Test: TAction;
+    Timer_Test: TTimer;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure Timer_EngineTimer(Sender: TObject);
@@ -105,6 +118,7 @@ type
     procedure TrackBar_NoiseTracking(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: WideChar; Shift: TShiftState);
     procedure Action_SnapshotExecute(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     FModeSelection: TModeSelection;
     FVicsekEngine1: TVicsekEngine0;
@@ -114,7 +128,8 @@ type
     FBoidssEngine3: TBoidssEngine3;
     FFractalEngine: TFractalEngine;
     FAquariumEngine: TAquariumEngine;
-    //
+    FRaindropEngine: TRaindropEngine;
+    // Control Elements ...
     FLockControlFlag: Boolean;
     FLockPaintingFlag: Boolean;
     FStepcounts: Integer;
@@ -124,8 +139,13 @@ type
     FMousePos: TPointF;
     FLogoFlag: Boolean;
     FStarfishFlag: Boolean;
-    //
+    // for Fractal Move Offset
     FStartMousePos: TPointF;
+    // for Notify Message Management
+    SelfFormHandle : HWND;
+    FPrevWndProc: Int64;
+    procedure HookWndProc(const AHandle : HWND);
+    procedure UnhookWndProc(const AHandle : HWND);
     procedure DrawCustomLogo;
     procedure UpdateParametersAndLabels(const ALabelFlag: Boolean = True);
     procedure SetModeSelection(const Value: TModeSelection);
@@ -138,10 +158,14 @@ type
     procedure Logo_FadeOutAndShrink(AControl: TControl; const ARestoreFlag: Boolean);
     function LoadBulgasari(): Boolean ;
     // extra ...
-    procedure AnimateVisibility(const AControl: TControl; const AMsg: string; const AShow: Boolean);
     procedure AnimationFinishedEvent(Sender: TObject);
     procedure SaveScreenshot(const ADialogFlag: Boolean = True);
+    procedure ShowToastAlert(const AControl: TControl; const AMsg: string; const AShow: Boolean);
+    procedure PlaySoundsRaindrop(const ASoundEnFlag: Boolean);
   public
+    { Custom WindowProc to handle Loop }
+    function WNDProc(AHWND: HWND; AMsg: UINT; WParam: WPARAM; LParam: LPARAM): LResult;
+
     property ModeSelection: TModeSelection  read FModeSelection  write SetModeSelection;
     property Stepcounts: Integer  read FStepcounts  write SetStepcounts;
   end;
@@ -153,17 +177,18 @@ implementation
 
 uses
   uCommons,
-  System.Threading,
   System.Math,
   System.IOUtils,
-  System.Math.Vectors;
+  System.Math.Vectors,
+  uResources;
 
 {$R *.fmx}
 
 const
   C_CaptionPrefix = 'Self-Organization Simulation 2026';
-  C_TmInterval: array [ TModeSelection ] of Cardinal = (33, 33, 20, 16, 33, 16, 33, 16);
-  C_StepOf_FPS: array [ TModeSelection ] of Cardinal = (30, 30, 50, 60, 30, 60, 30, 60);
+
+  C_TmInterval: array [ TModeSelection ] of Cardinal = (33, 33, 20, 16, 33, 16, 33, 16, 33);
+  C_StepOf_FPS: array [ TModeSelection ] of Cardinal = (30, 30, 50, 60, 30, 60, 30, 60, 30);
   C_Selections: array [ TModeSelection ] of string = ('',
                                                       'Vicsek Model Simulation',
                                                       'Boids Model-0 Simulation',
@@ -171,18 +196,59 @@ const
                                                       'Boids Model-2 Simulation',
                                                       'Boids Model-3',
                                                       'FractalEngine',
-                                                      'AQuarium');
-  C_ModelHelps: array [ TModeSelection ] of string = ('',
+                                                      'AQuarium',
+                                                      'RainDrop');
+  C_ModelHelps: array [ TModeSelection ] of string = ('* SNappshot Shortkey - [S] : Silent Snapshot, [Ctrl + S] : with Dialog, *',
                                                       'Mouse Move - Avoidance  Left MouseButton Down - Attraction',
                                                       'Mouse Move - Avoidance  Left MouseButton Down - Attraction',
                                                       'Left MouseButton Down, Move : Attraction,  Right MouseButton Down - Diffusion',
                                                       'Mouse Move : Vector Reffernce / Attraction,  Left MouseButton Down - Avoidance',
                                                       'Left MouseButton Down: Attraction,  Right MouseButton Down - Diffusion',
                                                       'Mouse Wheel: Zoom  LeftMButton Down/Drag: Move  RightMButton: Toggle(Fractal, Julia)',
-                                                      'Left MouseButton Down: Avoidance');
+                                                      'Left MouseButton Down: Avoidance',
+                                                      'Left MouseButton Down: Call a lightning flash  RightMButton: Show Windows Frame');
 
 const
-  C_Aquarium_FIshs = 150;  // Fix ...
+  C_Aquarium_FIshs  = 150;  // Fixed ...
+  C_RainDropsAmount = 500;
+  C_BGMSoundFile    = 'raindrops.mp3';
+  C_RainDropAlias   = 'RainDrops';
+
+
+{ Window Message Hookings ---------------------------------------------------- }
+{ Define the Window Procedure type  }
+function WindowProc(HWND: HWND; Msg: UINT; WParam: WPARAM; LParam: LPARAM): LRESULT;stdcall;
+begin
+  Result := MainForm.WndProc(HWND, Msg, wParam, lParam);
+end;
+
+// Implementation of the custom Window Procedure
+function TMainForm.WNDProc(AHWND: HWND; AMsg: UINT; WParam: WPARAM; LParam: LPARAM): LResult;
+begin
+  Result := 0;
+
+  if AMsg = MM_MCINOTIFY then
+    if WParam = MCI_NOTIFY_SUCCESSFUL then
+    begin
+      mciSendString(PChar('seek '+C_RainDropAlias+' to start'), nil, 0, 0);     // Loop Logic
+      mciSendString(PChar('play '+C_RainDropAlias+' notify'),   nil, 0, AHWND);
+    end;
+
+  Result := CallWindowProc(Ptr(FPrevWndProc), AHWND, AMsg, WParam, LParam);
+end;
+
+procedure TMainForm.HookWndProc(const AHandle : HWND);
+begin
+  // Set the custom WindowProc
+  // Get current WndProc and Set new one (Win64 Compatible)
+  FPrevWndProc := GetWindowLongPtr(SelfFormHandle, GWL_WNDPROC);
+  SetWindowLongPtr(AHandle, GWL_WNDPROC, LONG_PTR(@WindowProc));
+end;
+
+procedure TMainForm.UnhookWndProc(const AHandle : HWND);
+begin
+  SetWindowLongPtr(AHandle, GWLP_WNDPROC, FPrevWndProc);
+end;
 
 { TMainForm ------------------------------------------------------------------ }
 
@@ -261,100 +327,41 @@ begin
   end;
 end;
 
+procedure TMainForm.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  // Ensure the MCI device is closed when the application terminates
+  mciSendString('close '+C_RainDropAlias, nil, 0, 0);
+end;
+
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
-  if Assigned(FVicsekEngine1) then FreeAndNil(FVicsekEngine1);
-  if Assigned(FBoidssEngine0) then FreeAndNil(FBoidssEngine0);
-  if Assigned(FBoidssEngine1) then FreeAndNil(FBoidssEngine1);
-  if Assigned(FBoidssEngine2) then FreeAndNil(FBoidssEngine2);
-  if Assigned(FBoidssEngine3) then FreeAndNil(FBoidssEngine3);
-  if Assigned(FFractalEngine) then FreeAndNil(FFractalEngine);
+  //SetWindowLongPtr(SelfFormHandle, GWL_WNDPROC, NewWndProc);
+  UnhookWndProc(SelfFormHandle);
+
+  if Assigned(FVicsekEngine1)  then FreeAndNil(FVicsekEngine1);
+  if Assigned(FBoidssEngine0)  then FreeAndNil(FBoidssEngine0);
+  if Assigned(FBoidssEngine1)  then FreeAndNil(FBoidssEngine1);
+  if Assigned(FBoidssEngine2)  then FreeAndNil(FBoidssEngine2);
+  if Assigned(FBoidssEngine3)  then FreeAndNil(FBoidssEngine3);
+  if Assigned(FFractalEngine)  then FreeAndNil(FFractalEngine);
   if Assigned(FAquariumEngine) then FreeAndNil(FAquariumEngine);
-end;
-
-procedure TMainForm.FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: WideChar; Shift: TShiftState);
-const
-  _MoveStep = 20.0; // Arrow key movement sensitivity (pixels)
-begin
-  if Assigned(FFractalEngine) then
-  begin
-    var _DeltaXY: TPointF := PointF(0, 0);
-
-    if ssCtrl in Shift then
-      case Key of
-        vkUp:    begin FFractalEngine.ZoomAt(PaintBox_Sim.Width/2, PaintBox_Sim.Height/2, 1); end;
-        vkDown:  begin FFractalEngine.ZoomAt(PaintBox_Sim.Width/2, PaintBox_Sim.Height/2, 0); end;
-      end
-    else
-      case Key of
-        vkLeft:  begin _DeltaXY := PointF(-_MoveStep, 0); FFractalEngine.MoveByOffset(_DeltaXY); end;
-        vkUp:    begin _DeltaXY := PointF(0, -_MoveStep); FFractalEngine.MoveByOffset(_DeltaXY); end;
-        vkRight: begin _DeltaXY := PointF(_MoveStep, 0);  FFractalEngine.MoveByOffset(_DeltaXY); end;
-        vkDown:  begin _DeltaXY := PointF(0,  _MoveStep); FFractalEngine.MoveByOffset(_DeltaXY); end;
-      end;
-  end;
-
-  if (UpperCase(KeyChar) = 'S') then
-  begin
-    SaveScreenshot(False);
-    Key := 0;
-  end;
-end;
-
-procedure TMainForm.SaveScreenshot(const ADialogFlag: Boolean = True);
-begin
-  var _Snapenflag: Boolean := False;
-  var _SaveFile := '';
-  if ADialogFlag then
-    begin
-      var _SaveDialog := TSaveDialog.Create(nil);
-      try
-        _SaveDialog.Filter := 'PNG Image|*.png';
-        _SaveDialog.DefaultExt := 'png';
-        _SaveDialog.FileName := Format('Snapshot_%s.png', [FormatDateTime('yyyyMMdd_hhmmss', Now)]);
-        _Snapenflag := _SaveDialog.Execute;
-        _SaveFile := _SaveDialog.FileName;
-      finally
-        _SaveDialog.Free;
-      end;
-    end
-  else
-    begin
-      var _SaveParth := ExtractFilePath(ParamStr(0));
-      _SaveFile := Format('Snapshot_%s.png', [FormatDateTime('yyyyMMdd_hhmmss', Now)]);
-      _SaveFile := TPath.Combine(IncludeTrailingPathDelimiter(_SaveParth), _SaveFile);
-      _Snapenflag := True;
-    end;
-
-  if _Snapenflag and (_SaveFile > ' ') then
-    begin
-      TTask.Run(
-      procedure
-      begin
-        var _ScreenShot := PaintBox_Sim.MakeScreenshot;
-        try
-          _ScreenShot.SaveToFile(_SaveFile);
-          if not FileExists(_SaveFile) then
-            ShowMessage('Failed to save snapshot ')
-          else
-            AnimateVisibility(Label_Alarm, 'Saved a Snapshot', True);
-        finally
-          _ScreenShot.Free;
-        end;
-      end);
-    end;
+  if Assigned(FRaindropEngine) then FreeAndNil(FRaindropEngine);
 end;
 
 procedure TMainForm.FormShow(Sender: TObject);
 begin
-  if Self.Tag = 0 then begin Self.Tag := 1; Global_TrimAppMemorySizeEx(0); end;   // Effect / USeful ?
+  if Self.Tag = 0 then begin Self.Tag := 1; Global_TrimAppMemorySizeEx(0); end;
+
+  SelfFormHandle := FmxHandleToHWND(Self.Handle); //  FMX.Platform.Win.TWinWindowHandle(FMX.Platform.Win.WindowHandleToPlatform(Self.Handle)).Wnd;
+  HookWndProc(SelfFormHandle);
+
   InitModeSelection(FModeSelection);
 end;
 
 procedure TMainForm.InitModeSelection(const Value: TModeSelection);
 begin
   Self.Caption := C_CaptionPrefix + ' - '+ C_Selections[Value];;
-  Text_HelpHint.Text :=  'Ref. : ' + C_ModelHelps[Value];
+  Text_HelpHint.Text := C_ModelHelps[Value];
 end;
 
 procedure TMainForm.TrackBar_NoiseTracking(Sender: TObject);
@@ -454,6 +461,10 @@ begin
             begin
               //
             end;
+     ms_Raindrop:
+            begin
+              //
+            end;
   end;
   FLockControlFlag := False;
 end;
@@ -469,15 +480,20 @@ begin
     if FIsMousePressed1 then
       begin
         FStartMousePos := PointF(X, Y);
-        if Assigned(FVicsekEngine1) then FVicsekEngine1.SetMouseInfo(FMousePos, True) else
-        if Assigned(FBoidssEngine0) then FBoidssEngine0.SetMouseInfo(FMousePos, True) else
-        if Assigned(FBoidssEngine1) then FBoidssEngine1.SetMouseInfo(FMousePos, True) else
-        if Assigned(FBoidssEngine2) then FBoidssEngine2.SetMouseInfo(FMousePos, True) else
-        if Assigned(FBoidssEngine3) then FBoidssEngine3.SetMouseInfo(FMousePos, True) else
-        if Assigned(FAquariumEngine) then FAquariumEngine.SetMouseInfo(FMousePos, True);
+        if Assigned(FVicsekEngine1)  then FVicsekEngine1.SetMouseInfo(FMousePos, True) else
+        if Assigned(FBoidssEngine0)  then FBoidssEngine0.SetMouseInfo(FMousePos, True) else
+        if Assigned(FBoidssEngine1)  then FBoidssEngine1.SetMouseInfo(FMousePos, True) else
+        if Assigned(FBoidssEngine2)  then FBoidssEngine2.SetMouseInfo(FMousePos, True) else
+        if Assigned(FBoidssEngine3)  then FBoidssEngine3.SetMouseInfo(FMousePos, True) else
+        if Assigned(FAquariumEngine) then FAquariumEngine.SetMouseInfo(FMousePos, True) else
+        if Assigned(FRaindropEngine) then FRaindropEngine.SetMouseInfo(FMousePos, True, False);
+
       end else
     if FIsMousePressed2 then
-      if Assigned(FFractalEngine) then FFractalEngine.SetMouseInfo(FMousePos, FIsMousePressed1, FIsMousePressed2);
+      begin
+        if Assigned(FFractalEngine)  then FFractalEngine.SetMouseInfo(FMousePos,  FIsMousePressed1, FIsMousePressed2);
+        if Assigned(FRaindropEngine) then FRaindropEngine.SetMouseInfo(FMousePos, FIsMousePressed1, FIsMousePressed2);
+      end;
   end;
 end;
 
@@ -509,10 +525,11 @@ begin
               end;
             end;
       end else
-    if Assigned(FBoidssEngine1) then FBoidssEngine1.SetMouseInfo(PointF(X, Y), FIsMousePressed1) else
-    if Assigned(FBoidssEngine2) then FBoidssEngine2.SetMouseInfo(PointF(X, Y), FIsMousePressed1) else
-    if Assigned(FBoidssEngine3) then FBoidssEngine3.SetMouseInfo(PointF(X, Y), FIsMousePressed1) else
-    if Assigned(FAquariumEngine) then FAquariumEngine.SetMouseInfo(PointF(X, Y), FIsMousePressed1);
+    if Assigned(FBoidssEngine1)  then FBoidssEngine1.SetMouseInfo(PointF(X, Y), FIsMousePressed1) else
+    if Assigned(FBoidssEngine2)  then FBoidssEngine2.SetMouseInfo(PointF(X, Y), FIsMousePressed1) else
+    if Assigned(FBoidssEngine3)  then FBoidssEngine3.SetMouseInfo(PointF(X, Y), FIsMousePressed1) else
+    if Assigned(FAquariumEngine) then FAquariumEngine.SetMouseInfo(PointF(X, Y), FIsMousePressed1) else
+    if Assigned(FRaindropEngine) then FRaindropEngine.SetMouseInfo(PointF(X, Y), FIsMousePressed1, False);
   end;
 end;
 
@@ -563,7 +580,7 @@ begin
   if Assigned(FBoidssEngine1) then
     begin
       { Run simulation and pass mouse state to the engine }
-      FBoidssEngine1.Run(Canvas, _IsMousePressed1, _IsMousePressed2, FMousePos);
+      FBoidssEngine1.Run(Canvas, PaintBox_Sim.Width, PaintBox_Sim.Height, _IsMousePressed1, _IsMousePressed2, FMousePos);
 
       { Draw visual feedback for mouse attraction }
       if _IsMousePressed1 then
@@ -592,6 +609,10 @@ begin
   if Assigned(FAquariumEngine) then
     begin
       FAquariumEngine.Run(Canvas, PaintBox_Sim.Width, PaintBox_Sim.Height, CheckBox_BoidsTrails.IsChecked, _IsMousePressed1, _IsMousePressed2, FMousePos);
+    end else
+  if Assigned(FRaindropEngine) then
+    begin
+      FRaindropEngine.Run(Canvas, PaintBox_Sim.Width, PaintBox_Sim.Height, CheckBox_BoidsTrails.IsChecked, _IsMousePressed1, FMousePos);
     end
   else
     Exit;
@@ -601,13 +622,14 @@ end;
 
 procedure TMainForm.PaintBox_SimResize(Sender: TObject);
 begin
-  if Assigned(FVicsekEngine1) then FVicsekEngine1.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
-  if Assigned(FBoidssEngine0) then FBoidssEngine0.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
-  if Assigned(FBoidssEngine1) then FBoidssEngine1.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
-  if Assigned(FBoidssEngine2) then FBoidssEngine2.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
-  if Assigned(FBoidssEngine3) then FBoidssEngine3.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
-  if Assigned(FFractalEngine) then FFractalEngine.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
-  if Assigned(FAquariumEngine) then FAquariumEngine.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height);
+  if Assigned(FVicsekEngine1)  then FVicsekEngine1.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
+  if Assigned(FBoidssEngine0)  then FBoidssEngine0.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
+  if Assigned(FBoidssEngine1)  then FBoidssEngine1.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
+  if Assigned(FBoidssEngine2)  then FBoidssEngine2.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
+  if Assigned(FBoidssEngine3)  then FBoidssEngine3.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
+  if Assigned(FFractalEngine)  then FFractalEngine.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
+  if Assigned(FAquariumEngine) then FAquariumEngine.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) else
+  if Assigned(FRaindropEngine) then FRaindropEngine.Resize(PaintBox_Sim.Width, PaintBox_Sim.Height) ;
 end;
 
 procedure TMainForm.CheckBox_DynamicChange(Sender: TObject);
@@ -632,6 +654,8 @@ begin
   FLockPaintingFlag := True;
   Timer_Engine.Enabled := False;
 
+  PlaySoundsRaindrop(False);
+
   if Assigned(FVicsekEngine1)  then FreeAndNil(FVicsekEngine1);
   if Assigned(FBoidssEngine0)  then FreeAndNil(FBoidssEngine0);
   if Assigned(FBoidssEngine1)  then FreeAndNil(FBoidssEngine1);
@@ -639,11 +663,17 @@ begin
   if Assigned(FBoidssEngine3)  then FreeAndNil(FBoidssEngine3);
   if Assigned(FFractalEngine)  then FreeAndNil(FFractalEngine);
   if Assigned(FAquariumEngine) then FreeAndNil(FAquariumEngine);
+  if Assigned(FRaindropEngine) then
+    begin
+      FreeAndNil(FRaindropEngine);
+      PlaySoundsRaindrop(False);
+    end;
+
 
   { Reset Params COntrol ... }
   Layout_Vicsek.Visible :=           (Value = ms_Vicsek0);
   Layout_Boids.Visible :=            (Value = ms_Boidss0) or (Value = ms_Boidss1) or (Value = ms_Boidss2) or (Value = ms_Boidss3);
-  Layout_Params.Height :=            IfThen((Value = ms_Fractal) or (Value = ms_Aquarium), 1,  41);
+  Layout_Params.Height :=            IfThen((Value = ms_Fractal) or (Value = ms_Aquarium) or (Value = ms_Raindrop), 1,  41);
 
   TrackBar_Noise.Enabled :=          (Value = ms_Vicsek0);
   TrackBar_Velocity.Enabled :=       (Value = ms_Vicsek0);
@@ -706,6 +736,10 @@ begin
       begin
         FAquariumEngine := TAquariumEngine.Create(C_Aquarium_FIshs, PaintBox_Sim.LocalRect);   //
       end;
+    ms_Raindrop:
+      begin
+        FRaindropEngine := TRaindropEngine.Create(Round(PaintBox_Sim.Width), Round(PaintBox_Sim.Height), C_RainDropsAmount);
+      end;
   end;
 
   UpdateParametersAndLabels(False);
@@ -728,13 +762,15 @@ function TMainForm.GetParticleCounts(const AModel: TModeSelection): Integer;
 begin
   Result := 0;
   case AModel of
-    ms_Vicsek0: if Assigned(FVicsekEngine1) then Result := FVicsekEngine1.ParticleCount;
-    ms_Boidss0: if Assigned(FBoidssEngine0) then Result := FBoidssEngine0.FishCount;
-    ms_Boidss1: if Assigned(FBoidssEngine1) then Result := FBoidssEngine1.ParticleCount;
-    ms_Boidss2: if Assigned(FBoidssEngine2) then Result := FBoidssEngine2.ParticleCount;
-    ms_Boidss3: if Assigned(FBoidssEngine3) then Result := FBoidssEngine3.ParticleCount;
+    ms_Vicsek0: if Assigned(FVicsekEngine1)   then Result := FVicsekEngine1.ParticleCount;
+    ms_Boidss0: if Assigned(FBoidssEngine0)   then Result := FBoidssEngine0.FishCount;
+    ms_Boidss1: if Assigned(FBoidssEngine1)   then Result := FBoidssEngine1.ParticleCount;
+    ms_Boidss2: if Assigned(FBoidssEngine2)   then Result := FBoidssEngine2.ParticleCount;
+    ms_Boidss3: if Assigned(FBoidssEngine3)   then Result := FBoidssEngine3.ParticleCount;
     ms_Fractal: Result := 0;
     ms_Aquarium: if Assigned(FAquariumEngine) then Result := FAquariumEngine.FishCount;
+    ms_Raindrop: if Assigned(FRaindropEngine) then Result := C_RainDropsAmount;
+
   end;
 end;
 
@@ -788,42 +824,6 @@ begin
                              (Timer_Engine.Enabled) and (CheckBox_Dynamic.IsChecked);
 end;
 
-procedure TMainForm.AnimateVisibility(const AControl: TControl; const AMsg: string; const AShow: Boolean);
-begin
-  TLabel(AControl).Text := AMsg;
-  var _Anim := TFloatAnimation.Create(AControl);
-  with _Anim do
-  begin
-    Parent := AControl;
-    PropertyName := 'Opacity';
-    Duration := 2.0;
-    AnimationType := TAnimationType.Out;
-    Interpolation := TInterpolationType.Linear;
-  end;
-
-  if AShow then
-    begin
-      AControl.Opacity := 0;
-      AControl.Visible := True;
-      _Anim.StartValue := 0.5;
-      _Anim.StopValue :=  1;
-      _Anim.OnFinish :=   AnimationFinishedEvent;
-    end
-  else
-    begin
-      _Anim.StartValue := AControl.Opacity;
-      _Anim.StopValue :=  0;
-      _Anim.OnFinish :=   AnimationFinishedEvent;
-    end;
-
-  _Anim.Start;
-end;
-
-procedure TMainForm.AnimationFinishedEvent(Sender: TObject);
-begin
-  Label_Alarm.Visible := False;
-end;
-
 procedure TMainForm.Logo_FadeOutAndShrink(AControl: TControl; const ARestoreFlag: Boolean);
 begin
   if not FLogoFlag then Exit;
@@ -859,8 +859,14 @@ begin
     SetModeSelection(ms_Vicsek0);
     Exit;
   end;
-
+  // ------------------------------------------------------------------------ //
   Timer_Engine.Enabled := not Timer_Engine.Enabled;
+  // ------------------------------------------------------------------------ //
+  if ModeSelection = ms_Raindrop then
+  begin
+    PlaySoundsRaindrop(Timer_Engine.Enabled);
+  end;
+
   SetStartStopLabel(Timer_Engine.Enabled);
 end;
 
@@ -923,6 +929,12 @@ begin
             FreeAndNil(FAquariumEngine);
             FAquariumEngine := TAquariumEngine.Create(C_Aquarium_FIshs, PaintBox_Sim.LocalRect);
           end;
+     ms_Raindrop:
+         if Assigned(FRaindropEngine) then
+           begin
+             FreeAndNil(FRaindropEngine);
+             FRaindropEngine := TRainDropEngine.Create(Round(PaintBox_Sim.Width), Round(PaintBox_Sim.Height), C_RainDropsAmount);
+            end;
   end;
 
   Timer_Engine.Interval := C_TmInterval[FModeSelection];
@@ -935,14 +947,15 @@ begin
 end;
 
 // Extra -------------------------------------------------------------------- //
-
-procedure MakeImageCircular(const ASource: TBitmap; const ATargetCircle: TCircle);
+// TBitmap Error : Incompatible types: 'TPersistent' and 'tagBITMAP' types: 'TPersistent' and 'tagBITMAP'
+// TBitmap --> FMX.Graphics.TBitmap
+procedure MakeImageCircular(const ASource: FMX.Graphics.TBitmap; const ATargetCircle: TCircle);
 begin
   ATargetCircle.Fill.Kind := TBrushKind.Bitmap;
   ATargetCircle.Fill.Bitmap.Bitmap.Assign(ASource);
   ATargetCircle.Fill.Bitmap.WrapMode := TWrapMode.TileStretch;
 
-  ATargetCircle.Stroke.Color := C_BackgroundColor;//TAlphaColors.White;
+  ATargetCircle.Stroke.Color := C_BackgroundColor;
   ATargetCircle.Stroke.Thickness := 1;
   ATargetCircle.Stroke.Kind := TBrushKind.Solid;
 end;
@@ -974,6 +987,173 @@ begin
   end;
 
   MakeImageCircular(Image_Template.Bitmap, Circle_Logo);
+end;
+
+// Fractal Zoom / Snapshot -------------------------------------------------- //
+
+procedure TMainForm.FormKeyDown(Sender: TObject; var Key: Word; var KeyChar: WideChar; Shift: TShiftState);
+const
+  _MoveStep = 20.0; // Arrow key movement sensitivity (pixels)
+begin
+  if Assigned(FFractalEngine) then
+  begin
+    var _DeltaXY: TPointF := PointF(0, 0);
+
+    if ssCtrl in Shift then
+      case Key of
+        vkUp:    begin FFractalEngine.ZoomAt(PaintBox_Sim.Width/2, PaintBox_Sim.Height/2, 1); end;
+        vkDown:  begin FFractalEngine.ZoomAt(PaintBox_Sim.Width/2, PaintBox_Sim.Height/2, 0); end;
+      end
+    else
+      case Key of
+        vkLeft:  begin _DeltaXY := PointF(-_MoveStep, 0); FFractalEngine.MoveByOffset(_DeltaXY); end;
+        vkUp:    begin _DeltaXY := PointF(0, -_MoveStep); FFractalEngine.MoveByOffset(_DeltaXY); end;
+        vkRight: begin _DeltaXY := PointF(_MoveStep, 0);  FFractalEngine.MoveByOffset(_DeltaXY); end;
+        vkDown:  begin _DeltaXY := PointF(0,  _MoveStep); FFractalEngine.MoveByOffset(_DeltaXY); end;
+      end;
+  end;
+
+  if (UpperCase(KeyChar) = 'S') then
+  begin
+    SaveScreenshot(False);
+    Key := 0;
+  end;
+end;
+
+procedure TMainForm.SaveScreenshot(const ADialogFlag: Boolean = True);
+begin
+  var _Snapenflag: Boolean := False;
+  var _SaveFile := '';
+  if ADialogFlag then
+    begin
+      var _SaveDialog := TSaveDialog.Create(nil);
+      try
+        _SaveDialog.Filter := 'PNG Image|*.png';
+        _SaveDialog.DefaultExt := 'png';
+        _SaveDialog.FileName := Format('Snapshot_%s.png', [FormatDateTime('yyyyMMdd_hhmmss', Now)]);
+        _Snapenflag := _SaveDialog.Execute;
+        _SaveFile := _SaveDialog.FileName;
+      finally
+        _SaveDialog.Free;
+      end;
+    end
+  else
+    begin
+      var _SaveParth := ExtractFilePath(ParamStr(0));
+      _SaveFile := Format('Snapshot_%s.png', [FormatDateTime('yyyyMMdd_hhmmss', Now)]);
+      _SaveFile := TPath.Combine(IncludeTrailingPathDelimiter(_SaveParth), _SaveFile);
+      _Snapenflag := True;
+    end;
+
+  if _Snapenflag and (_SaveFile > ' ') then
+    begin
+      // Fallback ?
+      //var _WHandle: HWND := FMX.Platform.Win.TWinWindowHandle(FMX.Platform.Win.WindowHandleToPlatform(Self.Handle)).Wnd;
+      //if _WHandle > 0 then
+      TTask.Run(
+      procedure
+      begin
+        var _ScreenShot := PaintBox_Sim.MakeScreenshot;
+        try
+          _ScreenShot.SaveToFile(_SaveFile);
+          // Winapi.Windows.PostMessage(_WHandle, WM_SIMULATION_COMPLETE, 0, 0);  // Failed to PostMessage ?
+          if FileExists(_SaveFile) then
+            TThread.Queue(nil,
+              procedure
+              begin
+                ShowToastAlert(Label_Alarm, 'Saved a Snapshot', True);
+              end);
+        finally
+          _ScreenShot.Free;
+        end;
+      end);
+    end;
+end;
+
+var
+  Alert_Container: TRectangle;
+
+procedure TMainForm.ShowToastAlert(const AControl: TControl; const AMsg: string; const AShow: Boolean);
+begin
+  // Create a container for the toast at the bottom left
+  Alert_Container := TRectangle.Create(Self);
+  with Alert_Container do
+  begin
+    Parent := Self;
+    Align :=  TAlignLayout.None;
+    Fill.Color :=  claBlack;
+    Stroke.Kind := TBrushKind.None;
+    XRadius := 8;
+    YRadius := 8;
+    Width :=   120;
+    Height :=  30;
+    Opacity := 0; // Start invisible for animation
+
+    // Position: Bottom Left with 20px margin
+    Position.X := 10;
+    Position.Y := Self.ClientHeight - Height - 42;
+    Anchors := [TAnchorKind.akLeft, TAnchorKind.akBottom];
+  end;
+
+  // Add Label for text
+  var _Label := TLabel.Create(Alert_Container);
+  with _Label do
+  begin
+    Parent := Alert_Container;
+    Align :=  TAlignLayout.Client;
+    TextAlign := TTextAlign.Center;
+    StyledSettings := [TStyledSetting.Family, TStyledSetting.Size];
+    TextSettings.FontColor := TAlphaColorRec.White;
+    Text := AMsg;
+  end;
+
+  // Animation 1: Fade In
+  TAnimator.AnimateFloat(Alert_Container, 'Opacity', 0.5, 0.3);
+
+  // Animation 2: Fade Out after 2 seconds delay
+  var _Anim := TFloatAnimation.Create(Alert_Container);
+  with  _Anim do
+  begin
+    Parent := Alert_Container;
+    PropertyName := 'Opacity';
+    StartValue := 1.0;
+    StopValue :=  0.0;
+    Duration :=   0.5;
+    Delay :=      2.0; // Wait 2 seconds before disappearing
+    OnFinish :=   AnimationFinishedEvent;
+
+    Start;
+  end;
+end;
+
+procedure TMainForm.AnimationFinishedEvent(Sender: TObject);
+begin
+  if Assigned(Alert_Container) then
+    FreeAndNil(Alert_Container);
+end;
+
+
+{ for RainDrop Engine Sound Effect }
+
+procedure TMainForm.PlaySoundsRaindrop(const ASoundEnFlag: Boolean);
+begin
+  if ASoundEnFlag then
+    begin
+      // 1. Close any existing device before opening a new one
+      mciSendString(PChar('close ' + C_RainDropAlias), nil, 0, 0);
+      // 2. Open the file as 'mpegvideo' type with an alias 'MyMusic'
+      if mciSendString(PChar('open "' + string(C_BGMSoundFile) + '" type mpegvideo alias ' + C_RainDropAlias), nil, 0, 0) = 0 then
+        begin
+          // 3. Start playback with 'notify' flag to receive a message when finished
+          // Pass the Form's Handle to receive the MM_MCINOTIFY message
+          mciSendString(PChar('play ' + C_RainDropAlias + ' notify'), nil, 0, SelfFormHandle);
+        end;
+    end
+  else
+    begin
+      mciSendString(PChar('stop ' +  C_RainDropAlias), nil, 0, 0);
+      mciSendString(PChar('close ' + C_RainDropAlias), nil, 0, 0);
+    end;
 end;
 
 end.

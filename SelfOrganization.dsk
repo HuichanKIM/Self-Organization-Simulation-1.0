@@ -1,67 +1,66 @@
 ﻿[Closed Files]
-File_0=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\SOURCE\RTL\SYS\System.pas',0,1,11412,1,11436,0,0,,
-File_1=TSourceModule,'E:\VicsekFmx\123uBoidsSim2.pas',0,1,352,1,1,0,0,,
-File_2=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\rtl\common\System.Math.Vectors.pas',0,1,138,1,150,0,0,,
-File_3=TSourceModule,'E:\VicsekFmx\uBoidsSim_Base.pas',0,1,1,89,14,0,0,,
-File_4=TSourceModule,'E:\VicsekFmx\uVicsekSim_Base.pas',0,1,1,69,38,0,0,,
-File_5=TSourceModule,'E:\VicsekFmx\uBoidsSim4.pas',0,1,265,79,281,0,0,,
-File_6=TSourceModule,'E:\VicsekFmx\Unit1.pas',0,1,1,68,12,0,0,,
-File_7=TSourceModule,'E:\VicsekFmx\uIDMHighway.pas',0,1,142,77,144,0,0,,
-File_8=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\fmx\FMX.Graphics.pas',0,1,72,32,96,0,0,,
-File_9=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\fmx\FMX.Types.pas',0,1,675,80,696,0,0,{{6036,0}
-File_10=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\fmx\FMX.Controls.pas',0,1,4540,1,4546,0,0,{{701,4}
-File_11=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\SOURCE\RTL\SYS\System.Types.pas',0,1,356,1,380,0,0,,
-File_12=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\rtl\common\System.UIConsts.pas',0,1,943,1,955,0,0,,
-File_13=TSourceModule,'E:\2024_DelphiLibs12\FastMM4-AVX\FastMM4.pas',0,1,19328,1,19345,0,0,,
-File_14=TSourceModule,'E:\2024_DelphiLibs12\Image32\source\Img32.Clipper2.pas',0,1,1,87,24,0,0,,
+File_0=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\rtl\common\System.Classes.pas',0,1,175,15,199,0,0,,
+File_1=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\fmx\FMX.Ani.pas',0,1,155,31,190,0,0,,
+File_2=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\fmx\FMX.Graphics.pas',0,1,6371,1,6389,0,0,,
+File_3=TSourceModule,'E:\VicsekFmx\uVicsekSim0.pas',0,1,292,75,311,0,0,,
+File_4=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\SOURCE\RTL\SYS\System.pas',0,1,5905,59,5917,0,0,,
+File_5=TSourceModule,'E:\Auarium\Aqua_Form.pas',0,1,750,96,758,0,0,,
+File_6=TSourceModule,'E:\VicsekFmx\123uBoidsSim2.pas',0,1,352,1,1,0,0,,
+File_7=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\rtl\common\System.Math.Vectors.pas',0,1,138,1,150,0,0,,
+File_8=TSourceModule,'E:\VicsekFmx\uBoidsSim_Base.pas',0,1,1,89,14,0,0,,
+File_9=TSourceModule,'E:\VicsekFmx\uVicsekSim_Base.pas',0,1,1,69,38,0,0,,
+File_10=TSourceModule,'E:\VicsekFmx\uBoidsSim4.pas',0,1,265,79,281,0,0,,
+File_11=TSourceModule,'E:\VicsekFmx\Unit1.pas',0,1,1,68,12,0,0,,
+File_12=TSourceModule,'E:\VicsekFmx\uIDMHighway.pas',0,1,142,77,144,0,0,,
+File_13=TSourceModule,'c:\program files (x86)\embarcadero\studio\23.0\source\fmx\FMX.Types.pas',0,1,675,80,696,0,0,{{6036,0}
 
 [Modules]
-Module0=E:\VicsekFmx\SelfOrganization.dproj
-Module1=E:\VicsekFmx\uAquarumSim.pas
+Module0=E:\VicsekFmx\uRainDropEngine.pas
+Module1=E:\VicsekFmx\SelfOrganization.dproj
 Module2=E:\VicsekFmx\Unit_Main.pas
-Module3=E:\VicsekFmx\uBoidsSim2.pas
-Module4=E:\VicsekFmx\uBoidsSim1.pas
+Module3=E:\VicsekFmx\uResources.pas
+Module4=E:\VicsekFmx\uFractalGenerator.pas
 Module5=E:\VicsekFmx\uCommons.pas
-Module6=E:\Auarium\Aqua_Form.pas
+Module6=E:\VicsekFmx\uBoidsSim1.pas
 Module7=E:\VicsekFmx\uBoidsSim0.pas
-Module8=E:\VicsekFmx\uVicsekSim0.pas
-Module9=E:\VicsekFmx\uPhyllotaxisPlant.pas
-Module10=E:\VicsekFmx\uFractalGenerator.pas
+Module8=E:\VicsekFmx\uAquarumSim.pas
+Module9=E:\VicsekFmx\uBoidsSim2.pas
+Module10=E:\VicsekFmx\uPhyllotaxisPlant.pas
 Module11=E:\VicsekFmx\uBoidsSim3.pas
 Count=12
 EditWindowCount=1
 
+[E:\VicsekFmx\uRainDropEngine.pas]
+ModuleType=TSourceModule
+
 [E:\VicsekFmx\SelfOrganization.dproj]
 ModuleType=TBaseProject
-
-[E:\VicsekFmx\uAquarumSim.pas]
-ModuleType=TSourceModule
 
 [E:\VicsekFmx\Unit_Main.pas]
 ModuleType=TSourceModule
 
-[E:\VicsekFmx\uBoidsSim2.pas]
+[E:\VicsekFmx\uResources.pas]
 ModuleType=TSourceModule
 
-[E:\VicsekFmx\uBoidsSim1.pas]
+[E:\VicsekFmx\uFractalGenerator.pas]
 ModuleType=TSourceModule
 
 [E:\VicsekFmx\uCommons.pas]
 ModuleType=TSourceModule
 
-[E:\Auarium\Aqua_Form.pas]
+[E:\VicsekFmx\uBoidsSim1.pas]
 ModuleType=TSourceModule
 
 [E:\VicsekFmx\uBoidsSim0.pas]
 ModuleType=TSourceModule
 
-[E:\VicsekFmx\uVicsekSim0.pas]
+[E:\VicsekFmx\uAquarumSim.pas]
+ModuleType=TSourceModule
+
+[E:\VicsekFmx\uBoidsSim2.pas]
 ModuleType=TSourceModule
 
 [E:\VicsekFmx\uPhyllotaxisPlant.pas]
-ModuleType=TSourceModule
-
-[E:\VicsekFmx\uFractalGenerator.pas]
 ModuleType=TSourceModule
 
 [E:\VicsekFmx\uBoidsSim3.pas]
@@ -69,7 +68,7 @@ ModuleType=TSourceModule
 
 [EditWindow0]
 ViewCount=12
-CurrentEditView=E:\VicsekFmx\SelfOrganization.dpr
+CurrentEditView=E:\VicsekFmx\uRainDropEngine.pas
 View0=0
 View1=1
 View2=2
@@ -89,12 +88,12 @@ Docked=1
 State=0
 Left=0
 Top=0
-Width=9922
-Height=9169
+Width=8785
+Height=7578
 MaxLeft=-1
 MaxTop=-1
-ClientWidth=9922
-ClientHeight=9169
+ClientWidth=8785
+ClientHeight=7578
 TBDockHeight=9097
 LRDockWidth=9918
 Dockable=1
@@ -104,13 +103,13 @@ BorlandEditorCodeExplorer=BorlandEditorCodeExplorer@EditWindow0
 TopPanelSize=0
 LeftPanelSize=1562
 LeftPanelClients=PropertyInspector,DockSite3
-LeftPanelData=000008000101000000007312000000000000011A060000000000000100000000DD09000009000000446F636B53697465330100000000841D00001100000050726F7065727479496E73706563746F72FFFFFFFF
+LeftPanelData=00000800010100000000B60E000000000000011A060000000000000100000000DD09000009000000446F636B53697465330100000000891700001100000050726F7065727479496E73706563746F72FFFFFFFF
 RightPanelSize=1473
 RightPanelClients=DockSite2,DockSite4
-RightPanelData=00000800010100000000731200000000000001C10500000000000001000000004E0C000009000000446F636B53697465320100000000841D000009000000446F636B5369746534FFFFFFFF
+RightPanelData=00000800010100000000B60E00000000000001C10500000000000001000000004E0C000009000000446F636B536974653201000000008917000009000000446F636B5369746534FFFFFFFF
 BottomPanelSize=1206
 BottomPanelClients=MessageView,DockSite1
-BottomPanelData=0000080001020100000009000000446F636B5369746531033E00000000000002B6040000000000000100000000033E00000F0000004D65737361676556696577466F726DFFFFFFFF
+BottomPanelData=0000080001020100000009000000446F636B5369746531E83600000000000002B6040000000000000100000000E83600000F0000004D65737361676556696577466F726DFFFFFFFF
 BottomMiddlePanelSize=0
 BottomMiddlePanelClients=DockSite0,GraphDrawingModel
 BottomMiddelPanelData=0000080001020200000009000000446F636B536974653010000000477261706844726177696E67566965779D1D00000000000002F506000000000000FFFFFFFF
@@ -118,8 +117,8 @@ BottomMiddelPanelData=0000080001020200000009000000446F636B5369746530100000004772
 [View0]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\SelfOrganization.dpr
-CursorX=29
-CursorY=4
+CursorX=1
+CursorY=1
 TopLine=1
 LeftCol=1
 Elisions=
@@ -129,9 +128,9 @@ EditViewName=E:\VicsekFmx\SelfOrganization.dpr
 [View1]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\Unit_Main.pas
-CursorX=53
-CursorY=13
-TopLine=628
+CursorX=95
+CursorY=659
+TopLine=592
 LeftCol=1
 Elisions=
 Bookmarks=
@@ -139,109 +138,109 @@ EditViewName=E:\VicsekFmx\Unit_Main.pas
 
 [View2]
 CustomEditViewType=TEditView
+Module=E:\VicsekFmx\uResources.pas
+CursorX=1
+CursorY=5
+TopLine=1
+LeftCol=1
+Elisions=
+Bookmarks=
+EditViewName=Borland.FormDesignerView
+
+[View3]
+CustomEditViewType=TEditView
+Module=E:\VicsekFmx\uRainDropEngine.pas
+CursorX=57
+CursorY=39
+TopLine=25
+LeftCol=1
+Elisions=
+Bookmarks=
+EditViewName=E:\VicsekFmx\uRainDropEngine.pas
+
+[View4]
+CustomEditViewType=TEditView
 Module=E:\VicsekFmx\uAquarumSim.pas
-CursorX=80
-CursorY=100
-TopLine=139
+CursorX=40
+CursorY=204
+TopLine=177
 LeftCol=1
 Elisions=
 Bookmarks=
 EditViewName=E:\VicsekFmx\uAquarumSim.pas
 
-[View3]
-CustomEditViewType=TEditView
-Module=E:\VicsekFmx\uVicsekSim0.pas
-CursorX=65
-CursorY=51
-TopLine=46
-LeftCol=1
-Elisions=
-Bookmarks=
-EditViewName=E:\VicsekFmx\uVicsekSim0.pas
-
-[View4]
+[View5]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\uBoidsSim0.pas
 CursorX=1
-CursorY=67
-TopLine=51
+CursorY=383
+TopLine=357
 LeftCol=1
 Elisions=
 Bookmarks=
 EditViewName=E:\VicsekFmx\uBoidsSim0.pas
 
-[View5]
+[View6]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\uBoidsSim1.pas
 CursorX=1
-CursorY=3
-TopLine=1
+CursorY=319
+TopLine=313
 LeftCol=1
 Elisions=
 Bookmarks=
 EditViewName=E:\VicsekFmx\uBoidsSim1.pas
 
-[View6]
+[View7]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\uBoidsSim2.pas
-CursorX=39
-CursorY=112
-TopLine=89
+CursorX=20
+CursorY=371
+TopLine=292
 LeftCol=1
 Elisions=
 Bookmarks=
 EditViewName=E:\VicsekFmx\uBoidsSim2.pas
 
-[View7]
+[View8]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\uBoidsSim3.pas
-CursorX=74
-CursorY=360
-TopLine=344
+CursorX=16
+CursorY=412
+TopLine=403
 LeftCol=1
 Elisions=
 Bookmarks=
 EditViewName=E:\VicsekFmx\uBoidsSim3.pas
 
-[View8]
+[View9]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\uCommons.pas
-CursorX=43
-CursorY=51
-TopLine=36
+CursorX=56
+CursorY=57
+TopLine=35
 LeftCol=1
 Elisions=
 Bookmarks=
 EditViewName=E:\VicsekFmx\uCommons.pas
 
-[View9]
+[View10]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\uFractalGenerator.pas
-CursorX=1
-CursorY=1
-TopLine=262
+CursorX=72
+CursorY=81
+TopLine=71
 LeftCol=1
 Elisions=
 Bookmarks=
 EditViewName=E:\VicsekFmx\uFractalGenerator.pas
 
-[View10]
-CustomEditViewType=TEditView
-Module=E:\Auarium\Aqua_Form.pas
-CursorX=105
-CursorY=768
-TopLine=750
-LeftCol=1
-Elisions=
-Bookmarks=
-EditViewName=E:\Auarium\Aqua_Form.pas
-
 [View11]
 CustomEditViewType=TEditView
 Module=E:\VicsekFmx\uPhyllotaxisPlant.pas
-CursorX=26
-CursorY=156
-TopLine=135
+CursorX=44
+CursorY=71
+TopLine=1
 LeftCol=1
 Elisions=
 Bookmarks=
@@ -303,18 +302,16 @@ PercentageSizes=1
 Create=1
 Visible=1
 Docked=0
-State=2
+State=0
 Left=10000
 Top=519
 Width=8934
 Height=8526
 MaxLeft=-4
 MaxTop=-6
-MaxWidth=8934
-MaxHeight=8526
-ClientWidth=10000
-ClientHeight=10058
-BottomPanelSize=8825
+ClientWidth=8863
+ClientHeight=8468
+BottomPanelSize=7294
 BottomPanelClients=EditWindow0
 BottomPanelData=0000080000000000000000000000000000000000000000000000000100000000000000000C0000004564697457696E646F775F30FFFFFFFF
 
@@ -345,11 +342,11 @@ Docked=1
 State=0
 Left=0
 Top=36
-Width=9922
+Width=8785
 Height=1019
 MaxLeft=-1
 MaxTop=-1
-ClientWidth=9922
+ClientWidth=8785
 ClientHeight=1019
 TBDockHeight=1019
 LRDockWidth=2770
@@ -365,11 +362,11 @@ State=0
 Left=0
 Top=0
 Width=1473
-Height=4344
+Height=2753
 MaxLeft=-1
 MaxTop=-1
 ClientWidth=1473
-ClientHeight=4344
+ClientHeight=2753
 TBDockHeight=7156
 LRDockWidth=2000
 Dockable=1
@@ -384,11 +381,11 @@ State=0
 Left=0
 Top=440
 Width=1562
-Height=4994
+Height=3403
 MaxLeft=-1
 MaxTop=-1
 ClientWidth=1562
-ClientHeight=4994
+ClientHeight=3403
 TBDockHeight=7812
 LRDockWidth=1562
 Dockable=1
@@ -907,11 +904,11 @@ State=0
 Left=0
 Top=540
 Width=1473
-Height=4344
+Height=2753
 MaxLeft=-1
 MaxTop=-1
 ClientWidth=1473
-ClientHeight=4344
+ClientHeight=2753
 TBDockHeight=7812
 LRDockWidth=1473
 Dockable=1

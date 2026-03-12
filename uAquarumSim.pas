@@ -51,7 +51,7 @@ type
     FKey: Integer;
     FAquaKey: Integer;
     FScaleSize: Single;
-    FCurrentCenter: TPointF; // Internally tracked center for smooth transitions
+    FCurrentCenter: TPointF;     // Internally tracked center for smooth transitions
     procedure DrawFish(ACanvas: TCanvas; AFish: TFish);
     function GetFishCount: Integer;
     procedure UpdateFishBodyPath(const ATailWag: Single);
@@ -361,10 +361,10 @@ begin
   try
     var _Matrix := TMatrix.Identity;
     _Matrix := TMatrix.CreateScaling(AFish.Size.Width / 13, AFish.Size.Height / 10) *
-               TMatrix.CreateRotation(DegToRad(AFish.Angle)) *                  // AFish.Angle) *
+               TMatrix.CreateRotation(DegToRad(AFish.Angle)) *
                TMatrix.CreateTranslation(AFish.Position.X, AFish.Position.Y);
 
-    ACanvas.SetMatrix(_Matrix);
+    ACanvas.SetMatrix(_Matrix); // * ACanvas.Matrix);                               { for GPU-accelerated ? }
     { Update tail animation path }
     var _TailWag: Single := Sin((FTime + AFish.PhaseOffset) * 15) * 3.5;
     with FTailPath do

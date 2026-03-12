@@ -79,28 +79,28 @@ begin
     SetLength(FLeaves, FLeafCount);
 
   { Parallel generation of leaf positions and attributes }
-  TParallel.For(0, FLeafCount - 1, procedure(I: Integer)
+  TParallel.For(0, FLeafCount - 1, procedure(Index: Integer)
   var
     _Angle, _Radius: Single;
     _Norm: Single;
   begin
     { Phyllotaxis algorithm: calculate polar coordinates }
-    _Angle := I * DegToRad(FGoldenAngle);
-    _Radius := FSpacing * Sqrt(I + 1);
+    _Angle := Index * DegToRad(FGoldenAngle);
+    _Radius := FSpacing * Sqrt(Index + 1);
 
     { Convert to Cartesian coordinates }
-    FLeaves[I].Position := PointF(
+    FLeaves[Index].Position := PointF(
       ACenter.X + Cos(_Angle) * _Radius,
       ACenter.Y + Sin(_Angle) * _Radius
     );
 
     { Visual attributes }
-    FLeaves[I].Angle := RadToDeg(_Angle) + 90; // Rotate leaf to face outward
-    FLeaves[I].Scale := 0.2 + (Sqrt(I) / Sqrt(FLeafCount)) * 1.2; // Size increases toward the outer edge
+    FLeaves[Index].Angle := RadToDeg(_Angle) + 90; // Rotate leaf to face outward
+    FLeaves[Index].Scale := 0.2 + (Sqrt(Index) / Sqrt(FLeafCount)) * 1.2; // Size increases toward the outer edge
 
     { Color interpolation: Center (Light Green) to Outer (Darker Teal) }
-    _Norm := I / FLeafCount;
-    FLeaves[I].Color := InterpolateAlphaColor($FFD4E157, $FF00796B, _Norm);
+    _Norm := Index / FLeafCount;
+    FLeaves[Index].Color := InterpolateAlphaColor($FFD4E157, $FF00796B, _Norm);
   end);
 end;
 

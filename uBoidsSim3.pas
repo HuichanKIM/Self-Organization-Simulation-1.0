@@ -62,7 +62,7 @@ type
     function Align(ABoid: TBoidsMouse): TVector;
     function Cohesion(ABoid: TBoidsMouse): TVector;
     function Separation(ABoid: TBoidsMouse): TVector;
-    procedure Step(const AMousePos: TVector; const AMousePressed1, AMousePressed2: Boolean);
+    procedure UpdatePhysics(const AMousePos: TVector; const AMousePressed1, AMousePressed2: Boolean);
     procedure UpdateBoids(const ACanvas: TCanvas);
   public
     constructor Create(AWidth, AHeight: Single; ACount: Integer);
@@ -277,7 +277,7 @@ begin
   FIsMouseDown1 := IsDown;
 end;
 
-procedure TBoidssEngine3.Step(const AMousePos: TVector; const AMousePressed1, AMousePressed2: Boolean);
+procedure TBoidssEngine3.UpdatePhysics(const AMousePos: TVector; const AMousePressed1, AMousePressed2: Boolean);
 begin
   { Parallelize the heavy calculation part }
   TParallel.For(0, FBoids.Count - 1,
@@ -409,7 +409,7 @@ begin
 
   FMousePos := Vector(AMousePos.X, AMousePos.Y, 0);
   // ------------------------------------------------------------------------ //
-  Step(FMousePos, AMousePressed1, AMousePressed2);                              { 1. Update Physics and Flocking in Parallel }
+  UpdatePhysics(FMousePos, AMousePressed1, AMousePressed2);                              { 1. Update Physics and Flocking in Parallel }
   // ------------------------------------------------------------------------ //
   if (FBuffer.Width <> Round(CW)) or (FBuffer.Height <> Round(CH)) then         { 2. Sync Buffer Size }
   begin

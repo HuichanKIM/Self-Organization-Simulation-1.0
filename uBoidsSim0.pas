@@ -48,14 +48,15 @@ type
     FSeparationWeight: Single;   // Weight for separation behavior              // Boids element ?
     FMaxSpeed: Single;           // Maximum movement speed
     FMinSpeed: Single;           // Minimum movement speed
-    procedure DrawFish(ACanvas: TCanvas; const AFish: TFish);
+    procedure DrawFishAll(ACanvas: TCanvas);
     procedure SetNeighborRadius(const Value: Single);
     function GetFishCount: Integer;
     procedure UpdateFishBodyPath(const ATailWag: Single);
     procedure UpdateFishCount(const ACount: Integer; const AViewRect: TRectF);
-    procedure UpdateFishDatas(const ARect: TRectF; const ADeltaTime: Single);
-    procedure UpdateFishDatas2(const ARect: TRectF; const ADeltaTime: Single);  // Deprecating ...
+    procedure UpdatePhysics(const ARect: TRectF; const ADeltaTime: Single);
     procedure SetFishCount(const Value: Integer);
+    procedure UpdateBuffer(const AW, AH: Single; const AFlag: Boolean = False);
+    procedure RenderToBuffer(const ACanvas: TCanvas; const AMousePressed: Boolean; const AMousePos: TPointF);
   public
     constructor Create(const ACount: Integer; const AViewRect: TRectF);
     destructor Destroy; override;
@@ -189,10 +190,8 @@ begin
   FLockFlag := False;
 end;
 
-procedure TBoidssEngine0.UpdateFishDatas(const ARect: TRectF; const ADeltaTime: Single);
+procedure TBoidssEngine0.UpdatePhysics(const ARect: TRectF; const ADeltaTime: Single);
 begin
-  if FLockFlag then Exit;
-
   FTime := FTime + ADeltaTime;
   var _FCount := Length(FFishes);
   var _NewFishes: TArray<TFish>;
@@ -279,182 +278,69 @@ begin
   FFishes := _NewFishes;
 end;
 
-procedure TBoidssEngine0.UpdateFishDatas2(const ARect: TRectF; const ADeltaTime: Single);
+procedure TBoidssEngine0.DrawFishAll(ACanvas: TCanvas);
 begin
-  if FLockFlag then Exit;
-
-  { Slowed down tail animation _Speed from 10 to 4 }
-  FTime := FTime + ADeltaTime;
-
-  var _FCount := Length(FFishes);
-  var _NewFishes: TArray<TFish>;
-  SetLength(_NewFishes, _FCount);
-
-  { Parallel processing of fish flocking logic }
-  TParallel.For(0, _FCount - 1, procedure(_i: Integer)
-  var
-    _AvgVel, _AvgPos, _Separation: TPointF;
-    _NeighborCount: Integer;
-    _Dist, _Speed: Single;
-    _TargetVel, _Steering: TPointF;
-    _CurrentFish: TFish;
-  begin
-    _CurrentFish := FFishes[_i];
-    _AvgVel := PointF(0, 0);
-    _AvgPos := PointF(0, 0);
-    _Separation := PointF(0, 0);
-    _NeighborCount := 0;
-
-    for var _j := 0 to _FCount - 1 do
+  for var _i := 0 to Length(FFishes) - 1 do
     begin
-      if _i = _j then Continue;
+      var _State: TCanvasSaveState := ACanvas.SaveState;
+      var _Fish := FFishes[_i];
+      try
+        var _Angle: Single := ArcTan2(_Fish.Velocity.Y, _Fish.Velocity.X);
+        var _Matrix := TMatrix.Identity;
+        _Matrix := TMatrix.CreateScaling(_Fish.Size.Width / 13, _Fish.Size.Height / 10) *
+                   TMatrix.CreateRotation(_Angle) *
+                   TMatrix.CreateTranslation(_Fish.Position.X, _Fish.Position.Y);
 
-      var _Diff := FFishes[_j].Position - _CurrentFish.Position;
+        with ACanvas do
+          begin
+            SetMatrix(_Matrix);
+            Fill.Color := _Fish.Color;
+            Fill.Kind := TBrushKind.Solid;
+            FillPath(FBaseBody, 0.85);
+          end;
 
-      { Toroidal distance correction }
-      if _Diff.X > ARect.Width / 2  then _Diff.X := _Diff.X - ARect.Width;
-      if _Diff.X < -ARect.Width / 2 then _Diff.X := _Diff.X + ARect.Width;
-      if _Diff.Y > ARect.Height / 2  then _Diff.Y := _Diff.Y - ARect.Height;
-      if _Diff.Y < -ARect.Height / 2 then _Diff.Y := _Diff.Y + ARect.Height;
+        { Update tail animation path }
+        var _TailWag: Single := Sin((FTime + _Fish.PhaseOffset) * 15) * 3.5;
+        with FTailPath do
+          begin
+            Clear;
+            MoveTo(TPointF.Create(-4, 0));
+            LineTo(TPointF.Create(-8, -3.5 + _TailWag));
+            LineTo(TPointF.Create(-8, 3.5 +  _TailWag));
+            ClosePath;
+          end;
 
-      _Dist := _Diff.Length;
+        ACanvas.FillPath(FTailPath, 0.85);
 
-      if (_Dist > 0) and (_Dist < FNeighborRadius) then
-      begin
-        _AvgVel := _AvgVel + FFishes[_j].Velocity;
-        _AvgPos := _AvgPos + FFishes[_j].Position;
-        { _Separation: _Steering away from neighbors - softened scaling }
-        _Separation := _Separation + (_Diff.Normalize * -1.0 / (_Dist + 1.0));
-        Inc(_NeighborCount);
+        with ACanvas do
+          begin
+            Stroke.Color := TAlphaColorRec.Black;
+            Stroke.Thickness := 0.6;
+            DrawPath(FBaseBody, 0.4);
+            DrawPath(FTailPath, 0.4);
+
+            Fill.Color := TAlphaColorRec.White; { Draw eyes }
+            FillEllipse(TRectF.Create(3.2, -2.2, 5.0, -0.4), 1.0);
+          end;
+      finally
+        ACanvas.RestoreState(_State);
       end;
     end;
-
-    _Steering := PointF(0, 0);
-
-    if _NeighborCount > 0 then
-    begin
-      _AvgVel := _AvgVel / _NeighborCount;
-      _AvgPos := (_AvgPos / _NeighborCount) - _CurrentFish.Position;
-
-      { Accumulate _Steering forces instead of overriding velocity directly }
-      _Steering := _Steering + (_AvgVel * FAlignmentWeight);
-      _Steering := _Steering + (_AvgPos * FCohesionWeight);
-      _Steering := _Steering + (_Separation * FSeparationWeight * 10.0);
-    end;
-
-    { Mouse interaction logic - softened }
-    var _MouseDiff := FMousePos - _CurrentFish.Position;
-    var _MouseDist := _MouseDiff.Length;
-    if _MouseDist < 120 then
-    begin
-      if FIsMouseDown then
-        _Steering := _Steering + (_MouseDiff.Normalize * 0.8) // Reduced Attract
-      else
-        _Steering := _Steering - (_MouseDiff.Normalize * 0.6); // Reduced Repel
-    end;
-
-    { Apply _Steering to velocity with a small interpolation factor for smoothness }
-    _TargetVel := _CurrentFish.Velocity + _Steering * 0.1;
-
-    { Limit _Speed and update position }
-    _Speed := _TargetVel.Length;
-    if _Speed > FMaxSpeed then
-      _TargetVel := _TargetVel.Normalize * FMaxSpeed;
-    if _Speed < 0.4 then
-      _TargetVel := _TargetVel.Normalize * 0.4;
-
-    _CurrentFish.Velocity := _TargetVel;
-    _CurrentFish.Position := _CurrentFish.Position + _CurrentFish.Velocity;
-    _CurrentFish.Color := GetDirectionColor(ArcTan2(_CurrentFish.Velocity.Y, _CurrentFish.Velocity.X));
-
-    { Screen wrapping }
-    if _CurrentFish.Position.X < ARect.Left then _CurrentFish.Position.X := ARect.Right;
-    if _CurrentFish.Position.X > ARect.Right then _CurrentFish.Position.X := ARect.Left;
-    if _CurrentFish.Position.Y < ARect.Top then _CurrentFish.Position.Y := ARect.Bottom;
-    if _CurrentFish.Position.Y > ARect.Bottom then _CurrentFish.Position.Y := ARect.Top;
-
-    _NewFishes[_i] := _CurrentFish;
-  end);
-
-  FFishes := _NewFishes;
 end;
 
-procedure TBoidssEngine0.DrawFish(ACanvas: TCanvas; const AFish: TFish);
+procedure TBoidssEngine0.RenderToBuffer(const ACanvas: TCanvas; const AMousePressed: Boolean; const AMousePos: TPointF);
 begin
-  var _State: TCanvasSaveState := ACanvas.SaveState;
+  if ACanvas.BeginScene then
   try
-    var _Angle: Single := ArcTan2(AFish.Velocity.Y, AFish.Velocity.X);
-    var _Matrix := TMatrix.Identity;
-    _Matrix := TMatrix.CreateScaling(AFish.Size.Width / 13, AFish.Size.Height / 10) *
-               TMatrix.CreateRotation(_Angle) *
-               TMatrix.CreateTranslation(AFish.Position.X, AFish.Position.Y);
-
-    with ACanvas do
-    begin
-      SetMatrix(_Matrix);
-      Fill.Color := AFish.Color;
-      Fill.Kind := TBrushKind.Solid;
-      FillPath(FBaseBody, 0.85);
-    end;
-
-    { Update tail animation path }
-    var _TailWag: Single := Sin((FTime + AFish.PhaseOffset) * 15) * 3.5;
-    with FTailPath do
-    begin
-      Clear;
-      MoveTo(TPointF.Create(-4, 0));
-      LineTo(TPointF.Create(-8, -3.5 + _TailWag));
-      LineTo(TPointF.Create(-8, 3.5  + _TailWag));
-      ClosePath;
-    end;
-
-    ACanvas.FillPath(FTailPath, 0.85);
-
-    with ACanvas do
-    begin
-      Stroke.Color := TAlphaColorRec.Black;
-      Stroke.Thickness := 0.6;
-      DrawPath(FBaseBody, 0.4);
-      DrawPath(FTailPath, 0.4);
-
-      Fill.Color := TAlphaColorRec.White;                                         { Draw eyes }
-      FillEllipse(TRectF.Create(3.2, -2.2, 5.0, -0.4), 1.0);
-    end;
+    DrawFishAll(ACanvas);//
   finally
-    ACanvas.RestoreState(_State);
+    ACanvas.EndScene;
   end;
-end;
 
-procedure TBoidssEngine0.Run(MainCanvas: TCanvas; const CW, CH: Single; const Trails, AMousePressed: Boolean; const AMousePos: TPointF);
-begin
-  if FLockFlag then Exit;
-
-  // 1. Update physics and flocking data ------------------------------------ //
-  UpdateFishDatas(RectF(0, 0, CW, CH), 0.02);
-  // 2. Sync buffer size ---------------------------------------------------- //
-  if (FBuffer.Width <> Round(CW)) or (FBuffer.Height <> Round(CH)) then
-  begin
-    FWidth := CW;
-    FHeight := CH;
-    FBuffer.SetSize(Round(CW), Round(CH));
-  end;
-  // 3. Draw all fish ------------------------------------------------------- //
-  if FBuffer.Canvas.BeginScene then
-  begin
-    try
-      FBuffer.Canvas.Clear(TAlphaColorRec.Black);
-      for var _i := 0 to Length(FFishes)- 1 do
-        DrawFish(FBuffer.Canvas, FFishes[_i]);
-    finally
-      FBuffer.Canvas.EndScene;
-    end;
-  end;
-  // 4. Draw final buffer to main canvas ------------------------------------ //
-  MainCanvas.DrawBitmap(FBuffer, RectF(0, 0, FBuffer.Width, FBuffer.Height), RectF(0, 0, FWidth, FHeight), 1.0);
-  // 5. Show interaction range if mouse is pressed -------------------------- //
+  // 4. Show interaction range if mouse is pressed -------------------------- //
   if AMousePressed then
-  if MainCanvas.BeginScene then
-  with MainCanvas do
+  with ACanvas do
+  if BeginScene then
   try
     Stroke.Color := TAlphaColorRec.White;
     Stroke.Kind := TBrushKind.Solid;
@@ -465,6 +351,45 @@ begin
   finally
     EndScene;
   end;
+end;
+
+procedure TBoidssEngine0.UpdateBuffer(const AW, AH: Single; const AFlag: Boolean = False);
+begin
+  if (FBuffer.Width <> Round(AW)) or (FBuffer.Height <> Round(AH)) then
+  begin
+    FWidth :=  AW;
+    FHeight := AH;
+    FBuffer.SetSize(Round(AW), Round(AH));
+  end;
+
+  with FBuffer.Canvas do
+  if BeginScene then
+    try
+      if AFlag then
+        begin
+          Fill.Color := TAlphaColorRec.Black;
+          Fill.Kind := TBrushKind.Solid;
+          FillRect(RectF(0, 0, FWidth, FHeight), 0, 0, [], 0.2);
+        end
+      else
+        Clear(TAlphaColorRec.Black);
+    finally
+      EndScene;
+    end;
+end;
+
+procedure TBoidssEngine0.Run(MainCanvas: TCanvas; const CW, CH: Single; const Trails, AMousePressed: Boolean; const AMousePos: TPointF);
+begin
+  if FLockFlag then Exit;
+
+  // 1. Update physics and flocking data ------------------------------------ //
+  UpdatePhysics(RectF(0, 0, CW, CH), 0.02);
+  // 2. Sync buffer size ---------------------------------------------------- //
+  UpdateBuffer(CW, CH);
+  // 3. Rendering on buffer canvas (Sequential) ----------------------------- //
+  RenderToBuffer(FBuffer.Canvas, AMousePressed, AMousePos);
+  // 4. Draw final buffer to main canvas ------------------------------------ //
+  MainCanvas.DrawBitmap(FBuffer, RectF(0, 0, FBuffer.Width, FBuffer.Height), RectF(0, 0, FWidth, FHeight), 1.0);
 end;
 
 end.

@@ -26,13 +26,8 @@ type
     Position: TVector;
     Velocity: TVector;
     Acceleration: TVector;
-    Color: TAlphaColor;
-    BaseColor: TAlphaColor;
     constructor Create(AWidth, AHeight: Single);
-    procedure Update(MaxSpeed: Single);
     procedure ApplyForce(Force: TVector);
-    procedure Edges(Width, Height: Single);
-    procedure Show(Canvas: TCanvas);
     function Seek(Target: TVector; MaxSpeed, MaxForce: Single): TVector;        // Attraction
     function Flee(Target: TVector; MaxSpeed, MaxForce: Single): TVector;        // Diffusion
   end;
@@ -48,9 +43,10 @@ type
     //
     FMousePos: TPointF;
     FIsMouseDown: Boolean;
-    procedure UpdateBuffer(const AFlag: Boolean = False);
+    procedure UpdateBuffer(const AW, AH: Single; const AFlag: Boolean = False);
     procedure SetParticleCount(const Value: Integer);
-    procedure UpdateBoids(ABoid: TBoid; ATarget: TVector;const AMousePressed1, AMousePressed2: Boolean);
+    procedure UpdatePhysics(const AMousePressed1, AMousePressed2: Boolean; const AMousePos: TPointF);
+    procedure RenderToBuffer(const ACanvas: TCanvas; const AMousePressed: Boolean; const AMousePos: TPointF);
   public
     FParticleCount: Integer;
     FSeparationWeight: Single;
@@ -63,7 +59,7 @@ type
     constructor Create(const AWidth, AHeight: Single; const ACount: Integer);
     destructor Destroy; override;
     { MousePressed: Left, MouseSecondaryPressed: Right }
-    procedure Run(MainCanvas: TCanvas; const AMousePressed1, AMousePressed2: Boolean; const AMousePos: TPointF);
+    procedure Run(MainCanvas: TCanvas; const CW, CH: Single; const AMousePressed1, AMousePressed2: Boolean; const AMousePos: TPointF);
     procedure Resize(const AWidth, AHeight: Single);
     procedure SetMouseInfo(Pos: TPointF; IsDown: Boolean);
     property TrailingAmount: Single read FAlphaAmount write FAlphaAmount;
@@ -91,8 +87,6 @@ begin
   Velocity :=     Vector(Random * 2 - 1, Random * 2 - 1);
   Velocity :=     Velocity.Normalize * (Random * 2 + 2);
   Acceleration := Vector(0, 0);
-  BaseColor :=    TAlphaColorRec.Skyblue;
-  Color :=        TAlphaColorRec.Skyblue;
 end;
 
 procedure TBoid.ApplyForce(Force: TVector);
@@ -110,6 +104,7 @@ begin
     begin
       _Desired := _Desired.Normalize * MaxSpeed;
       var _Steer := Vector(_Desired.X - Velocity.X, _Desired.Y - Velocity.Y, 1.0);
+
       Result := _Steer.Limit(MaxForce);
     end
   else
@@ -119,52 +114,18 @@ end;
 function TBoid.Flee(Target: TVector; MaxSpeed, MaxForce: Single): TVector;
 begin
   var _Desired: TVector := Vector(Position.X - Target.X, Position.Y - Target.Y, 1.0);
-  var _Steer: TVector := Vector(0,0,0);
+  var _Steer: TVector :=   Vector(0,0,0);
   if _Desired.Length > 0 then
     begin
       _Desired := _Desired.Normalize * MaxSpeed;
       _Steer.X := _Desired.X - Velocity.X;
       _Steer.Y := _Desired.Y - Velocity.Y;
       _Steer.W := 1.0;
+
       Result := _Steer.Limit(MaxForce);
     end
   else
     Result := Vector(0, 0);
-end;
-
-procedure TBoid.Update(MaxSpeed: Single);
-begin
-  Velocity.X := Velocity.X + Acceleration.X;
-  Velocity.Y := Velocity.Y + Acceleration.Y;
-  Velocity := Velocity.Limit(MaxSpeed);
-
-  Position.X := Position.X + Velocity.X;
-  Position.Y := Position.Y + Velocity.Y;
-
-  Acceleration := Vector(0, 0);
-end;
-
-procedure TBoid.Edges(Width, Height: Single);
-begin
-  if Position.X > Width then Position.X := 0;
-  if Position.X < 0 then Position.X := Width;
-  if Position.Y > Height then Position.Y := 0;
-  if Position.Y < 0 then Position.Y := Height;
-end;
-
-procedure TBoid.Show(Canvas: TCanvas);
-begin
-  var _Angle: Single := ArcTan2(Velocity.Y, Velocity.X);
-  var _State: TCanvasSaveState := Canvas.SaveState;
-  try
-    Canvas.SetMatrix(Canvas.Matrix * TMatrix.CreateRotation(_Angle) * TMatrix.CreateTranslation(Position.X, Position.Y));
-    Canvas.Fill.Color := GetDirectionColor(_Angle);
-    Canvas.Fill.Kind := TBrushKind.Solid;
-
-    Canvas.FillPolygon([PointF(8, 0), PointF(-6, 4), PointF(-3, 0), PointF(-6, -4)], 1.0);
-  finally
-    Canvas.RestoreState(_State);
-  end;
 end;
 
 { TBoidsEngine }
@@ -234,10 +195,138 @@ begin
   end;
 end;
 
-procedure TBoidssEngine1.UpdateBuffer(const AFlag: Boolean = False);
+procedure TBoidssEngine1.UpdatePhysics(const AMousePressed1, AMousePressed2: Boolean; const AMousePos: TPointF);
 begin
-  if FBuffer.Canvas.BeginScene then
+  var _Target := Vector(AMousePos.X, AMousePos.Y);
+  // 1. Parallel Processing ------------------------------------------------- //
+  TParallel.For(0, FParticleCount - 1,
+    procedure(Index: Integer)
+    begin
+      var _Align: TVector := Vector(0, 0);
+      var _Coh: TVector := Vector(0, 0);
+      var _Sep: TVector := Vector(0, 0);
+      var _MouseForce: TVector := Vector(0, 0);
+      var _Total: Integer := 0;
+      var _Dist: Single := 0;
+
+      var _CurrentBoid := FBoids[Index];
+
+      for var _Other: TBoid in FBoids do
+        begin
+          _Dist := Sqrt(Sqr(_CurrentBoid.Position.X - _Other.Position.X) + Sqr(_CurrentBoid.Position.Y - _Other.Position.Y));
+          if (_Other <> _CurrentBoid) and (_Dist < FPerceptionRadius) then
+            begin
+              _Align.X := _Align.X + _Other.Velocity.X;
+              _Align.Y := _Align.Y + _Other.Velocity.Y;
+
+              _Coh.X := _Coh.X + _Other.Position.X;
+              _Coh.Y := _Coh.Y + _Other.Position.Y;
+
+              if _Dist > 0 then
+                begin
+                  _Sep.X := _Sep.X + (_CurrentBoid.Position.X - _Other.Position.X) / (_Dist * _Dist);
+                  _Sep.Y := _Sep.Y + (_CurrentBoid.Position.Y - _Other.Position.Y) / (_Dist * _Dist);
+                end;
+              Inc(_Total);
+            end;
+        end;
+
+      if _Total > 0 then
+        begin
+          _Align.X := _Align.X / _Total;
+          _Align.Y := _Align.Y / _Total;
+          _Align := _Align.Normalize * MaxSpeed;
+          _Align.X := _Align.X - _CurrentBoid.Velocity.X;
+          _Align.Y := _Align.Y - _CurrentBoid.Velocity.Y;
+          _Align := _Align.Limit(FMaxForce);
+
+          _Coh.X := (_Coh.X / _Total) - _CurrentBoid.Position.X;
+          _Coh.Y := (_Coh.Y / _Total) - _CurrentBoid.Position.Y;
+          _Coh := _Coh.Normalize * FMaxSpeed;
+          _Coh.X := _Coh.X - _CurrentBoid.Velocity.X;
+          _Coh.Y := _Coh.Y - _CurrentBoid.Velocity.Y;
+          _Coh := _Coh.Limit(FMaxForce);
+
+          _Sep.X := _Sep.X / _Total;
+          _Sep.Y := _Sep.Y / _Total;
+          _Sep := _Sep.Normalize * FMaxSpeed;
+          _Sep.X := _Sep.X - _CurrentBoid.Velocity.X;
+          _Sep.Y := _Sep.Y - _CurrentBoid.Velocity.Y;
+          _Sep := _Sep.Limit(FMaxForce);
+
+          _CurrentBoid.ApplyForce(_Align * FAlignmentWeight);
+          _CurrentBoid.ApplyForce(_Coh *   FCohesionWeight);
+          _CurrentBoid.ApplyForce(_Sep *   FSeparationWeight);
+        end;
+
+      // Mouse Interaction: Seek or Flee
+      var _MouseDist := Sqrt(Sqr(_CurrentBoid.Position.X - _Target.X) + Sqr(_CurrentBoid.Position.Y - _Target.Y));
+      if AMousePressed1 then
+        begin
+          _MouseForce := _CurrentBoid.Seek(_Target, FMaxSpeed, FMaxForce * 1.5);
+          _CurrentBoid.ApplyForce(_MouseForce * FMouseWeight);
+        end
+      else if AMousePressed2 then
+        begin
+          if _MouseDist < 200 then
+            begin
+              _MouseForce := _CurrentBoid.Flee(_Target, FMaxSpeed * 1.2, FMaxForce * 2.0);
+              _CurrentBoid.ApplyForce(_MouseForce * FMouseWeight * 2);
+            end;
+        end;
+
+      // Update Velosity, Position
+      _CurrentBoid.Velocity.X := _CurrentBoid.Velocity.X + _CurrentBoid.Acceleration.X;
+      _CurrentBoid.Velocity.Y := _CurrentBoid.Velocity.Y + _CurrentBoid.Acceleration.Y;
+      _CurrentBoid.Velocity := _CurrentBoid.Velocity.Limit(FMaxSpeed);
+
+      _CurrentBoid.Position.X := _CurrentBoid.Position.X + _CurrentBoid.Velocity.X;
+      _CurrentBoid.Position.Y := _CurrentBoid.Position.Y + _CurrentBoid.Velocity.Y;
+
+      // Update Edges
+      if _CurrentBoid.Position.X > FWidth then _CurrentBoid.Position.X := 0;
+      if _CurrentBoid.Position.X < 0 then _CurrentBoid.Position.X := FWidth;
+      if _CurrentBoid.Position.Y > FHeight then _CurrentBoid.Position.Y := 0;
+      if _CurrentBoid.Position.Y < 0 then _CurrentBoid.Position.Y := FHeight;
+      _CurrentBoid.Acceleration := Vector(0, 0);
+    end);
+end;
+
+procedure TBoidssEngine1.RenderToBuffer(const ACanvas: TCanvas; const AMousePressed: Boolean; const AMousePos: TPointF);
+begin
+  if ACanvas.BeginScene then
+  try
+    ACanvas.Clear(TAlphaColorRec.Black);
+    for var _Boid in FBoids do
+      begin
+        var _Angle: Single := ArcTan2(_Boid.Velocity.Y, _Boid.Velocity.X);
+        var _State: TCanvasSaveState := ACanvas.SaveState;
+        try
+          ACanvas.SetMatrix(ACanvas.Matrix * TMatrix.CreateRotation(_Angle) * TMatrix.CreateTranslation(_Boid.Position.X, _Boid.Position.Y));
+          ACanvas.Fill.Color := GetDirectionColor(_Angle);
+          ACanvas.Fill.Kind := TBrushKind.Solid;
+
+          ACanvas.FillPolygon([PointF(8, 0), PointF(-6, 4), PointF(-3, 0), PointF(-6, -4)], 1.0);
+        finally
+          ACanvas.RestoreState(_State);
+         end;
+      end;
+  finally
+    ACanvas.EndScene;
+  end;
+end;
+
+procedure TBoidssEngine1.UpdateBuffer(const AW, AH: Single; const AFlag: Boolean = False);
+begin
+  if (FBuffer.Width <> Round(AW)) or (FBuffer.Height <> Round(AH)) then
+  begin
+    FWidth :=  AW;
+    FHeight := AH;
+    FBuffer.SetSize(Round(AW), Round(AH));
+  end;
+
   with FBuffer.Canvas do
+  if BeginScene then
     try
       if AFlag then
         begin
@@ -252,117 +341,18 @@ begin
     end;
 end;
 
-procedure TBoidssEngine1.UpdateBoids(ABoid: TBoid; ATarget: TVector;const AMousePressed1, AMousePressed2: Boolean);
-begin
-  var _Align: TVector := Vector(0, 0);
-  var _Coh: TVector :=   Vector(0, 0);
-  var _Sep: TVector :=   Vector(0, 0);
-  var _MouseForce: TVector := Vector(0, 0);
-  var _Total: Integer := 0;
-  var _Dist: Single :=  0;
-
-  for var _Other:TBoid in FBoids do
-  begin
-    _Dist := Sqrt(Sqr(ABoid.Position.X - _Other.Position.X) + Sqr(ABoid.Position.Y - _Other.Position.Y));
-    if (_Other <> ABoid) and (_Dist < FPerceptionRadius) then
-    begin
-      _Align.X := _Align.X + _Other.Velocity.X;
-      _Align.Y := _Align.Y + _Other.Velocity.Y;
-
-      _Coh.X := _Coh.X + _Other.Position.X;
-      _Coh.Y := _Coh.Y + _Other.Position.Y;
-
-      if _Dist > 0 then
-      begin
-        _Sep.X := _Sep.X + (ABoid.Position.X - _Other.Position.X) / (_Dist * _Dist);
-        _Sep.Y := _Sep.Y + (ABoid.Position.Y - _Other.Position.Y) / (_Dist * _Dist);
-      end;
-      Inc(_Total);
-    end;
-  end;
-
-  if _Total > 0 then
-  begin
-    _Align.X := _Align.X / _Total;
-    _Align.Y := _Align.Y / _Total;
-    _Align := _Align.Normalize * MaxSpeed;
-    _Align.X := _Align.X - ABoid.Velocity.X;
-    _Align.Y := _Align.Y - ABoid.Velocity.Y;
-    _Align := _Align.Limit(FMaxForce);
-
-    _Coh.X := (_Coh.X / _Total) - ABoid.Position.X;
-    _Coh.Y := (_Coh.Y / _Total) - ABoid.Position.Y;
-    _Coh := _Coh.Normalize * FMaxSpeed;
-    _Coh.X := _Coh.X - ABoid.Velocity.X;
-    _Coh.Y := _Coh.Y - ABoid.Velocity.Y;
-    _Coh := _Coh.Limit(FMaxForce);
-
-    _Sep.X := _Sep.X / _Total;
-    _Sep.Y := _Sep.Y / _Total;
-    _Sep := _Sep.Normalize * FMaxSpeed;
-    _Sep.X := _Sep.X - ABoid.Velocity.X;
-    _Sep.Y := _Sep.Y - ABoid.Velocity.Y;
-    _Sep := _Sep.Limit(FMaxForce);
-
-    ABoid.ApplyForce(_Align * FAlignmentWeight);
-    ABoid.ApplyForce(_Coh *   FCohesionWeight);
-    ABoid.ApplyForce(_Sep *   FSeparationWeight);
-  end;
-  // Mouse Interaction: Seek or Flee
-  var _MouseDist := Sqrt(Sqr(ABoid.Position.X - ATarget.X) + Sqr(ABoid.Position.Y - ATarget.Y));
-  if _MouseDist < 150 then // 150 ???
-    begin
-      var _ColorVal := Round(255 * (1 - (_MouseDist / 150)));
-      _ColorVal := Round(Clamp(_ColorVal, 0, 255));
-      ABoid.Color := TAlphaColorRec.White;
-      TAlphaColorRec(ABoid.Color).R := 255;
-      TAlphaColorRec(ABoid.Color).G := 255 - _ColorVal;
-      TAlphaColorRec(ABoid.Color).B := 255 - _ColorVal;
-    end
-  else
-    ABoid.Color := ABoid.BaseColor;
-
-  if AMousePressed1 then
-    begin
-      _MouseForce := ABoid.Seek(ATarget, FMaxSpeed, FMaxForce * 1.5);
-      ABoid.ApplyForce(_MouseForce * FMouseWeight);
-    end else
-  if AMousePressed2 then
-    begin
-      if _MouseDist < 200 then
-      begin
-        _MouseForce := ABoid.Flee(ATarget, FMaxSpeed * 1.2, FMaxForce * 2.0);
-        ABoid.ApplyForce(_MouseForce * FMouseWeight * 2);
-      end;
-    end;
-end;
-
-procedure TBoidssEngine1.Run(MainCanvas: TCanvas; const AMousePressed1, AMousePressed2: Boolean; const AMousePos: TPointF);
+procedure TBoidssEngine1.Run(MainCanvas: TCanvas; const CW, CH: Single; const AMousePressed1, AMousePressed2: Boolean; const AMousePos: TPointF);
 begin
   if FLockFlag then Exit;
-  // 1. Update Buffer Canvas ------------------------------------------------ //
-  UpdateBuffer(True);
-  // 2. Parallel update of boid logic  -------------------------------------- //
-  var _Target := Vector(AMousePos.X, AMousePos.Y);
-  var _LocalBoids := FBoids;
-  TParallel.For(0, FParticleCount - 1,
-  procedure(Index: Integer)
-  begin
-    UpdateBoids(_LocalBoids[Index], _Target, AMousePressed1, AMousePressed2);
-    _LocalBoids[Index].Update(FMaxSpeed);
-    _LocalBoids[Index].Edges(FWidth, FHeight);
-  end);
+
+  // 1. Parallel update of Boids logic  ------------------------------------- //
+  UpdatePhysics(AMousePressed1, AMousePressed2, AMousePos);
+  // 2. Update Buffer Canvas ------------------------------------------------ //
+  UpdateBuffer(CW, CH, True);
   // 3. Rendering on buffer canvas (Sequential) ----------------------------- //
-  if FBuffer.Canvas.BeginScene then
-  try
-    for var _Boid in FBoids do
-      _Boid.Show(FBuffer.Canvas);
-  finally
-    FBuffer.Canvas.EndScene;
-  end;
+  RenderToBuffer(FBuffer.Canvas, AMousePressed1, AMousePos);
   // 4. Output buffer to main canvas  --------------------------------------- //
   MainCanvas.DrawBitmap(FBuffer, RectF(0, 0, FWidth, FHeight), RectF(0, 0, FWidth, FHeight), 1.0);
 end;
 
 end.
-

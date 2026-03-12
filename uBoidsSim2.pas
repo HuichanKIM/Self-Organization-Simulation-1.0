@@ -75,7 +75,7 @@ type
   public
     constructor Create(const ACount: Integer; const AWidth, AHeight: Single);
     destructor Destroy; override;
-    procedure Step;
+    procedure UpdatePhysics;
     procedure Run(MainCanvas: TCanvas; const CW, CH: SIngle; const Trails: Boolean; const AMousePressed: Boolean; const AMousePos: TPointF);
     procedure Resize(AWidth, AHeight: Single);
     procedure SetMouseInfo(Pos: TPointF; IsDown: Boolean);
@@ -315,7 +315,7 @@ begin
   end;
 end;
 
-procedure TBoidssEngine2.Step;
+procedure TBoidssEngine2.UpdatePhysics;
 begin
   // Parallel processing of Boid physics calculations
   // This significantly improves performance when ParticleCount is high
@@ -429,7 +429,7 @@ begin
   // 1. Synchronize buffer sizes with the host canvas ----------------------- //
   SynchronizeBuffer(CW, CH);
   // 2. Physics calculation (Parallel) -------------------------------------- //
-  Step;
+  UpdatePhysics;
   // 3. Clear or fade the back buffer --------------------------------------- //
   UpdateBuffer;
   // 4. Render boids to the back buffer ------------------------------------- //

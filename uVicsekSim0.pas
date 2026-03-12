@@ -41,6 +41,9 @@ type
     //
     FMousePos: TPointF;
     FIsMouseDown: Boolean;
+    procedure RenderToBuffer(const ACanvas: TCanvas;
+      const AMousePressed: Boolean; const AMousePos: TPointF);
+    procedure SynchronizeBuffer(const AW, AH: SIngle);
     const MOUSE_INFLUENCE_RADIUS = 100.0;
     procedure SetParticleCount(const Value: Integer);
     procedure InitParticles(const PatCount: Integer);
@@ -245,23 +248,8 @@ begin
   end;
 end;
 
-procedure TVicsekEngine0.Run(MainCanvas: TCanvas; const CW, CH: Single; const Trails: Boolean; const AMousePressed: Boolean; const AMousePos: TPointF);
+procedure TVicsekEngine0.RenderToBuffer(const ACanvas: TCanvas; const AMousePressed: Boolean; const AMousePos: TPointF);
 begin
-  if FLockFlag then Exit;
-
-  // 1. Perform physics calculations  --------------------------------------- //
-  UpdatePhysics(FIsMouseDown, FMousePos);
-  // 2. Synchronize buffer size with canvas --------------------------------- //
-  if (FBuffer.Width <> Round(CW)) or (FBuffer.Height <> Round(CH)) then
-  begin
-    FWidth := CW;
-    FHeight := CH;
-    FBuffer.SetSize(Round(CW), Round(CH));
-  end;
-
-  // 3. Clear or fade buffer  ----------------------------------------------- //
-  UpdateBuffer(Trails);
-  // 4. Render particles ---------------------------------------------------- //
   if FBuffer.Canvas.BeginScene then
   try
     // Optional: Visualize mouse influence radius
@@ -313,7 +301,30 @@ begin
   finally
     FBuffer.Canvas.EndScene;
   end;
+end;
 
+procedure TVicsekEngine0.SynchronizeBuffer(const AW, AH: SIngle);
+begin
+  if (FBuffer.Width <> Round(AW)) or (FBuffer.Height <> Round(AH)) then
+  begin
+    FWidth :=  AW;
+    FHeight := AH;
+    FBuffer.SetSize(Round(AW), Round(AH));
+  end;
+end;
+
+procedure TVicsekEngine0.Run(MainCanvas: TCanvas; const CW, CH: Single; const Trails: Boolean; const AMousePressed: Boolean; const AMousePos: TPointF);
+begin
+  if FLockFlag then Exit;
+
+  // 1. Perform physics calculations  --------------------------------------- //
+  UpdatePhysics(FIsMouseDown, FMousePos);
+  // 2. Synchronize buffer size with canvas --------------------------------- //
+  SynchronizeBuffer(CW, CH);
+  // 3. Clear or fade buffer  ----------------------------------------------- //
+  UpdateBuffer(Trails);
+  // 4. Render particles ---------------------------------------------------- //
+  RenderToBuffer(FBuffer.Canvas, AMousePressed, AMousePos);
   // 5. Output buffer to main canvas  --------------------------------------- //
   MainCanvas.DrawBitmap(FBuffer, RectF(0, 0, FBuffer.Width, FBuffer.Height),  RectF(0, 0, FWidth, FHeight), 1.0);
 end;

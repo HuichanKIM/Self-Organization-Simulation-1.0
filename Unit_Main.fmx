@@ -13,6 +13,7 @@ object MainForm: TMainForm
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
   OnCreate = FormCreate
+  OnClose = FormClose
   OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
   OnShow = FormShow
@@ -34979,7 +34980,6 @@ object MainForm: TMainForm
   end
   object ComboBox_Model: TComboBox
     Anchors = [akTop, akRight]
-    CanFocus = False
     Items.Strings = (
       'Vicsek-0'
       'Boids-0'
@@ -34987,7 +34987,8 @@ object MainForm: TMainForm
       'Boids-2'
       'Boids-3'
       'Fractal'
-      'Aquarium')
+      'Aquarium'
+      'RainDrop')
     Opacity = 0.600000023841857900
     Position.X = 1209.000000000000000000
     Position.Y = 8.000000000000000000
@@ -35108,6 +35109,11 @@ object MainForm: TMainForm
     Text = ',,,'
     TabOrder = 22
   end
+  object Timer_Test: TTimer
+    Enabled = False
+    Left = 128
+    Top = 376
+  end
   object ActionList1: TActionList
     OnUpdate = ActionList1Update
     Left = 56
@@ -35127,6 +35133,10 @@ object MainForm: TMainForm
     object Action_Snapshot: TAction
       ShortCut = 16467
       OnExecute = Action_SnapshotExecute
+    end
+    object Action_Test: TAction
+      Text = 'Action_Test'
+      ShortCut = 16468
     end
   end
 end

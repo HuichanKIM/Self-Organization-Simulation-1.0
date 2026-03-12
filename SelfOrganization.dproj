@@ -289,15 +289,20 @@
         </DCCReference>
         <DCCReference Include="uCommons.pas"/>
         <DCCReference Include="uVicsekSim0.pas"/>
+        <DCCReference Include="uBoidsSim0.pas"/>
         <DCCReference Include="uBoidsSim1.pas"/>
         <DCCReference Include="uBoidsSim2.pas"/>
-        <DCCReference Include="uBoidsSim0.pas"/>
         <DCCReference Include="uBoidsSim3.pas"/>
         <DCCReference Include="uVicsekSim_Base.pas"/>
         <DCCReference Include="uBoidsSim_Base.pas"/>
         <DCCReference Include="uFractalGenerator.pas"/>
         <DCCReference Include="uPhyllotaxisPlant.pas"/>
         <DCCReference Include="uAquarumSim.pas"/>
+        <DCCReference Include="uRainDropEngine.pas"/>
+        <DCCReference Include="uResources.pas">
+            <Form>Form_Resources</Form>
+            <FormType>fmx</FormType>
+        </DCCReference>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
