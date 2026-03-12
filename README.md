@@ -54,5 +54,8 @@ The simulation explores how complex global patterns emerge from simple local int
 * Sample 6 (Extra - Fractal)
 ![./Images/Snapshot_Fractal](./Images/Snapshot_Fractal.png)
 
-* Sample 6 (Extra - Aquarium)
+* Sample 7 (Extra - Aquarium)
 ![./Images/Snapshot_Aqua](./Images/Snapshot_Aqua.png)
+
+* Sample 8 (Extra - RainDrop)
+![./Images/RaindropVisual](./Images/RaindropVisual.png)
