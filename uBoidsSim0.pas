@@ -1,4 +1,4 @@
-unit uBoidsSim0;
+﻿unit uBoidsSim0;
 
 interface
 
@@ -17,6 +17,8 @@ uses
   FMX.Controls;
 
 type
+  TArtMode = (amClassic, amVortex, amColorPulse, amSlowMotion, amChaos);
+
   { Record representing an individual fish agent }
   TFish = record
     Position: TPointF;           // Current position
@@ -26,28 +28,32 @@ type
     PhaseOffset: Single;         // Animation offset for tail wagging
   end;
 
-  { Simulation Engine }
-  //TVicsekEngine2 = class
+  { Core simulation engine }
   TBoidssEngine0 = class
   private
     FLockFlag: Boolean;          // Lock for initialization
     FBuffer: TBitmap;            // Bitmap buffer for rendering
     FWidth, FHeight: Single;
-
+    FCurrentMode: TArtMode;
     FFishes: TArray<TFish>;      // Array of fish data
     FFishCount: Integer;
+
     FBaseBody: TPathData;        // Fixed body path
     FTailPath: TPathData;        // Variable tail path
+
     FTime: Single;               // Accumulated time for animation
     FMousePos: TPointF;          // Current mouse position
     FIsMouseDown: Boolean;       // Mouse click state
 
+    FStartTime: TDateTime;
+    FBaseAlign, FBaseCohesion, FBaseSeparation, FBaseSpeed: Single;
     FNeighborRadius: Single;     // Interaction radius
     FAlignmentWeight: Single;    // Weight for alignment behavior               // Boids element ?
     FCohesionWeight: Single;     // Weight for cohesion behavior                // Boids element ?
     FSeparationWeight: Single;   // Weight for separation behavior              // Boids element ?
     FMaxSpeed: Single;           // Maximum movement speed
     FMinSpeed: Single;           // Minimum movement speed
+
     procedure DrawFishAll(ACanvas: TCanvas);
     procedure SetNeighborRadius(const Value: Single);
     function GetFishCount: Integer;
@@ -57,6 +63,8 @@ type
     procedure SetFishCount(const Value: Integer);
     procedure UpdateBuffer(const AW, AH: Single; const AFlag: Boolean = False);
     procedure RenderToBuffer(const ACanvas: TCanvas; const AMousePressed: Boolean; const AMousePos: TPointF);
+    procedure SetCurrentMode(const Value: TArtMode);
+    procedure AutoEvolve(const AutoFlag: Boolean);
   public
     constructor Create(const ACount: Integer; const AViewRect: TRectF);
     destructor Destroy; override;
@@ -65,6 +73,7 @@ type
     procedure Run(MainCanvas: TCanvas; const CW, CH: Single; const Trails, AMousePressed: Boolean; const AMousePos: TPointF);
     procedure SetMouseInfo(APos: TPointF; AIsDown: Boolean);
 
+    property CurrentMode: TArtMode      read FCurrentMode        write SetCurrentMode;
     property FishCount: Integer         read GetFishCount        write SetFishCount;
     property NeighborRadius: Single     read FNeighborRadius     write SetNeighborRadius;
     property SeparationWeight: Single   read FSeparationWeight   write FSeparationWeight;
@@ -78,7 +87,7 @@ implementation
 uses
   uCommons;
 
-{ TVicsekEngine2 }
+{ TBoidssEngine0 }
 
 constructor TBoidssEngine0.Create(const ACount: Integer; const AViewRect: TRectF);
 begin
@@ -93,11 +102,16 @@ begin
   FBuffer := TBitmap.Create(Round(FWidth), Round(FHeight));
 
   { Adjusted weights for smoother movement }
+  FBaseAlign      := 0.08;
+  FBaseCohesion   := 0.02;
+  FBaseSeparation := 0.8;
+  FBaseSpeed      := 4.2;
+
   FNeighborRadius :=   60.0;
-  FAlignmentWeight :=  0.08;    // Reduced from 1.0 to prevent instant snapping
-  FCohesionWeight :=   0.02;    // Slightly reduced for less "clumping" jitter
-  FSeparationWeight := 0.8;     // Reduced from 1.5 to soften repulsion
-  FMaxSpeed :=         4.2;     // Reduced from 2.5 for calmer flow
+  FAlignmentWeight :=  FBaseAlign;              // Reduced from 1.0 to prevent instant snapping
+  FCohesionWeight :=   FBaseCohesion;           // Slightly reduced for less "clumping" jitter
+  FSeparationWeight := FBaseSeparation;         // Reduced from 1.5 to soften repulsion
+  FMaxSpeed :=         FBaseSpeed;              // Reduced from 2.5 for calmer flow
   FMinSpeed :=         1.0;
 
   { Define the static part of the fish body }
@@ -148,7 +162,7 @@ begin
     for var _i := _OldCount to ACount - 1 do
     with FFishes[_i] do
     begin
-      _Angle := Random * 2 * Pi;
+      _Angle :=      Random * 2 * Pi;
       Position :=    PointF(Random * AViewRect.Width, Random * AViewRect.Height);
       Velocity :=    PointF(Cos(_Angle), Sin(_Angle)) * (FMinSpeed + Random * 2);
       Color :=       TAlphaColorRec.Alpha or TAlphaColor(Random($FFFFFF));
@@ -163,6 +177,69 @@ end;
 procedure TBoidssEngine0.SetNeighborRadius(const Value: Single);
 begin
   FNeighborRadius := Value;
+end;
+
+procedure TBoidssEngine0.SetCurrentMode(const Value: TArtMode);
+begin
+  FCurrentMode := Value;
+
+  case FCurrentMode of
+    amClassic:
+      begin
+        FAlignmentWeight  := FBaseAlign;
+        FCohesionWeight   := FBaseCohesion;
+        FSeparationWeight := FBaseSeparation;
+        FMaxSpeed         := FBaseSpeed;
+      end;
+    amVortex:
+      begin
+        FAlignmentWeight  := 0.15;
+        FCohesionWeight   := 0.12;
+        FSeparationWeight := 0.4;
+        FMaxSpeed         := 6.5;
+      end;
+    amColorPulse:
+      begin
+        FAlignmentWeight  := 0.06;
+        FCohesionWeight   := 0.03;
+        FSeparationWeight := 1.1;
+        FMaxSpeed         := 3.8;
+      end;
+    amSlowMotion:
+      begin
+        FAlignmentWeight  := 0.12;
+        FCohesionWeight   := 0.04;
+        FSeparationWeight := 0.6;
+        FMaxSpeed         := 2.1;
+      end;
+    amChaos:
+      begin
+        FAlignmentWeight  := 0.03;
+        FCohesionWeight   := 0.18;
+        FSeparationWeight := 2.2;
+        FMaxSpeed         := 7.5;
+      end;
+  end;
+end;
+
+procedure TBoidssEngine0.AutoEvolve(const AutoFlag: Boolean);
+begin
+  if AutoFlag then
+  begin
+    var _TimeSec := (Now - FStartTime) * 86400;  // seconds since start
+
+    // Gentle sinusoidal modulation creates slowly evolving organic behavior
+    FAlignmentWeight  := FBaseAlign      + Sin(_TimeSec * 0.7)  * 0.04;
+    FCohesionWeight   := FBaseCohesion   + Sin(_TimeSec * 1.1)  * 0.015;
+    FSeparationWeight := FBaseSeparation + Cos(_TimeSec * 0.5)  * 0.35;
+    FMaxSpeed         := FBaseSpeed      + Sin(_TimeSec * 0.3)  * 1.2;
+
+   // Additional dynamic behavior for specific modes
+    if FCurrentMode = amColorPulse then
+      FNeighborRadius := 55 + Sin(_TimeSec * 2.5) * 18;
+  end;
+
+  SetCurrentMode(FCurrentMode);    // ApplyArtMode;
 end;
 
 procedure TBoidssEngine0.SetFishCount(const Value: Integer);
@@ -280,9 +357,9 @@ end;
 
 procedure TBoidssEngine0.DrawFishAll(ACanvas: TCanvas);
 begin
-  for var _i := 0 to Length(FFishes) - 1 do
+  for var _i := 0 to High(FFishes) do
     begin
-      var _State: TCanvasSaveState := ACanvas.SaveState;
+      var _State := ACanvas.SaveState;
       var _Fish := FFishes[_i];
       try
         var _Angle: Single := ArcTan2(_Fish.Velocity.Y, _Fish.Velocity.X);
@@ -299,7 +376,7 @@ begin
             FillPath(FBaseBody, 0.85);
           end;
 
-        { Update tail animation path }
+        // Update tail animation path
         var _TailWag: Single := Sin((FTime + _Fish.PhaseOffset) * 15) * 3.5;
         with FTailPath do
           begin
@@ -319,7 +396,7 @@ begin
             DrawPath(FBaseBody, 0.4);
             DrawPath(FTailPath, 0.4);
 
-            Fill.Color := TAlphaColorRec.White; { Draw eyes }
+            Fill.Color := TAlphaColorRec.White; // Draw eyes
             FillEllipse(TRectF.Create(3.2, -2.2, 5.0, -0.4), 1.0);
           end;
       finally

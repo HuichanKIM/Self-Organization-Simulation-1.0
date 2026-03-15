@@ -59,6 +59,10 @@ type
     FLightningAlpha: Single; { 0.0 to 255.0 }
     FLightningSegments: TList<TLightningSegment>;       // Actual shapes of the lightning
     FThunderFlag: Boolean;
+    FChangeCatDogFlag: Integer;
+    FLampPos: TPointF;
+    //
+    FTime: Single;
     procedure SetDropCount(const Value: Integer);
     procedure UpdateBuffer(const CW, CH: Single);
     { Triggers a lightning flash }
@@ -67,12 +71,13 @@ type
     procedure TriggerLightning(const AMouseXPos: TPointF);
     { Plays a procedural thunder sound using system beep }
     procedure PlayThunderSound;
+    procedure UpdateFrameWFrame(const ADrawFlag: Boolean; AMainanvas: TCanvas);
   public
     constructor Create(AWidth, AHeight: Single; ADropCount: Integer = 300);
     destructor Destroy; override;
     procedure UpdatePhysics(const DeltaTime: Single);
     procedure RenderToBuffer(const ACanvas: TCanvas; const AOpacity: Single = 1.0);
-    procedure Resize(AWidth, AHeight: Single);
+    procedure Resize(const AWidth, AHeight: Single);
     procedure Run(MainCanvas: TCanvas; const CW, CH: Single; const Trails, AMousePressed: Boolean; const AMousePos: TPointF);
     procedure SetMouseInfo(const APos: TPointF; const AIsDown1, AIsDown2: Boolean);
 
@@ -129,8 +134,12 @@ begin
   FLockFlag :=       False;
   FMaskWindowFlag := False;
   FThunderFlag :=    False;
-  FWidth := AWidth;
-  FHeight := AHeight;
+  FWidth :=          AWidth;
+  FHeight :=         AHeight;
+
+  FTime := 0;
+
+  FChangeCatDogFlag := 0;
   { Define Horizon Line at 55% of the screen height }
   FHorizonY := FHeight * 0.55;   { Ground level }
   FLightningAlpha := 0;
@@ -187,7 +196,7 @@ begin
     MaskWindowFlag := not FMaskWindowFlag;
 end;
 
-procedure TRainDropEngine.Resize(AWidth, AHeight: Single);
+procedure TRainDropEngine.Resize(const AWidth, AHeight: Single);
 begin
   FLockFlag := True;
 
@@ -223,7 +232,9 @@ procedure TRainDropEngine.UpdatePhysics(const DeltaTime: Single);
 begin
   if Length(FDrops) = 0 then Exit;
 
-  { Handle Lightning Fade-out }
+  FTime := FTime + DeltaTime;
+
+  // Handle Lightning Fade-out
   if FLightningAlpha > 0 then
   begin
     FLightningAlpha := FLightningAlpha - (500.0 * DeltaTime);
@@ -234,29 +245,33 @@ begin
     end;
   end;
 
-  { Parallel update for performance }
+  // Parallel update for performance
   TParallel.For(0, High(FDrops), procedure(Index: Integer)
+  var
+    _Drop: TRainDrop;
   begin
-    FDrops[Index].JustHit := False;
-    if not FDrops[Index].IsSplashing then
+    _Drop := FDrops[Index];
+    _Drop.JustHit := False;
+    if not _Drop.IsSplashing then
     begin
-      FDrops[Index].Y := FDrops[Index].Y + (FDrops[Index].Speed * DeltaTime * 60);
-      if FDrops[Index].Y >= FDrops[Index].TargetY then
+      _Drop.Y := _Drop.Y + (_Drop.Speed * DeltaTime * 60);
+      if _Drop.Y >= _Drop.TargetY then
       begin
-        FDrops[Index].Y := FDrops[Index].TargetY;
-        FDrops[Index].IsSplashing := True;
-        FDrops[Index].JustHit := True;
+        _Drop.Y := _Drop.TargetY;
+        _Drop.IsSplashing := True;
+        _Drop.JustHit := True;
       end;
     end
     else
     begin
-      FDrops[Index].SplashRadius := FDrops[Index].SplashRadius + (3.5 * FDrops[Index].Depth);
-      if FDrops[Index].SplashRadius > (50.0 * Power(FDrops[Index].Depth, 1.3)) then
-        FDrops[Index].NeedsReset := True;
+      _Drop.SplashRadius := _Drop.SplashRadius + (3.5 * _Drop.Depth);
+      if _Drop.SplashRadius > (50.0 * Power(_Drop.Depth, 1.3)) then
+        _Drop.NeedsReset := True;
     end;
+    FDrops[Index] := _Drop;
   end);
 
-  { Process state changes on main thread }
+  // Process state changes on main thread
   for var _i := 0 to High(FDrops) do
   begin
     if FDrops[_i].NeedsReset then
@@ -279,6 +294,8 @@ begin
   var _StartPoint := PointF(AMouseXPos.X + (Random * 300 - 150), 0);//PointF(AMouseXPos.X + (Random * 200 - 100), 0);
   { End exactly at Mouse Click position }
   var _EndPoint := PointF(AMouseXPos.X, AMouseXPos.Y);
+  FLampPos := PointF(150, 100);
+
   //  Lichtenberg Algorithms ------------------------------------------------ //
   GenerateLichtenbergBolt(_StartPoint, _EndPoint);
   //  LichtenbergBolt ------------------------------------------------------- //
@@ -331,6 +348,14 @@ procedure TRainDropEngine.RenderToBuffer(const ACanvas: TCanvas; const AOpacity:
 begin
   if ACanvas.BeginScene then
   try
+    { a NightView of Seoul, Korea }
+    if FMaskWindowFlag then
+    with Form_Resources.Image_seoul do
+      begin
+        var _scale := Bitmap.Height / Bitmap.Width;
+        ACanvas.DrawBitmap(Bitmap, RectF(0, 0, Bitmap.Width, Bitmap.Height), RectF(0, 0, FWidth, FHeight * _scale), 1.0);
+      end;
+
     ACanvas.Stroke.Kind := TBrushKind.Solid;
     var _ColorRec: TAlphaColorRec := TAlphaColorRec.Create(TAlphaColorRec.White);
 
@@ -368,23 +393,25 @@ begin
     { 3. Draw all drops }
     for var _i := 0 to High(FDrops) do
     begin
-      if not FDrops[_i].IsSplashing then
+      var _Drop := FDrops[_i];
+      if not _Drop.IsSplashing then
         begin
           { Falling Drop Visualization }
           _ColorRec := TAlphaColorRec.Create(TAlphaColorRec.White);
-          _ColorRec.A := Round(200 * FDrops[_i].Depth * AOpacity);
+          _ColorRec.A := Round(200 * _Drop.Depth * AOpacity);
           ACanvas.Stroke.Color := TAlphaColor(_ColorRec);
 
           { Perspective thickness: Squared depth for extra emphasis on near drops }
-          ACanvas.Stroke.Thickness := Max(0.4, 4.5 * Sqr(FDrops[_i].Depth));
+          ACanvas.Stroke.Thickness := Max(0.4, 4.5 * Sqr(_Drop.Depth));
 
-          ACanvas.DrawLine(PointF(FDrops[_i].X, FDrops[_i].Y), PointF(FDrops[_i].X, FDrops[_i].Y + FDrops[_i].Length), 1.0);
+          ACanvas.DrawLine(PointF(_Drop.X, _Drop.Y),
+                           PointF(_Drop.X, _Drop.Y + _Drop.Length), 1.0);
         end
       else
         begin
          { Draw ground ripple (ellipse) and splash sparks }
-          var _MaxRadius := 80.0 * Power(FDrops[_i].Depth, 1.3);                { control factor }
-          var _Progress := FDrops[_i].SplashRadius / _MaxRadius;
+          var _MaxRadius := 80.0 * Power(_Drop.Depth, 1.3);                     { control factor }
+          var _Progress := _Drop.SplashRadius / _MaxRadius;
           var _SplashAlpha := 1.0 - _Progress;
 
           { Ripple (Flattened Ellipse) }
@@ -393,13 +420,13 @@ begin
           ACanvas.Stroke.Color := TAlphaColor(_ColorRec);
 
           { Near ripples are much thicker }
-          ACanvas.Stroke.Thickness := Max(0.2, 7.0 * Sqr(FDrops[_i].Depth));     { control factor }
+          ACanvas.Stroke.Thickness := Max(0.2, 7.0 * Sqr(_Drop.Depth));         { control factor }
 
           var _Rect: TRectF;
-          _Rect.Left :=    FDrops[_i].X - FDrops[_i].SplashRadius;
-          _Rect.Top :=     FDrops[_i].Y - (FDrops[_i].SplashRadius * 0.20);     { Flatter perspective }
-          _Rect.Right :=   FDrops[_i].X + FDrops[_i].SplashRadius;
-          _Rect.Bottom :=  FDrops[_i].Y + (FDrops[_i].SplashRadius * 0.20);
+          _Rect.Left :=    _Drop.X - _Drop.SplashRadius;
+          _Rect.Top :=     _Drop.Y - (_Drop.SplashRadius * 0.20);               { Flatter perspective }
+          _Rect.Right :=   _Drop.X + _Drop.SplashRadius;
+          _Rect.Bottom :=  _Drop.Y + (_Drop.SplashRadius * 0.20);
 
           ACanvas.DrawEllipse(_Rect, 1.0);
 
@@ -412,10 +439,10 @@ begin
               ACanvas.Stroke.Color := TAlphaColor(_ColorRec);
               ACanvas.Stroke.Thickness := ACanvas.Stroke.Thickness * 0.2;       { Flatter perspective }
 
-              var _SparkHeight := 13.0 * FDrops[_i].Depth * _SparkAlpha;  // 15.0 * FDrops[_i].Depth * _SparkAlpha;
-              ACanvas.DrawLine(PointF(FDrops[_i].X - 2, FDrops[_i].Y), PointF(FDrops[_i].X - 5, FDrops[_i].Y - _SparkHeight),   1.0);
-              ACanvas.DrawLine(PointF(FDrops[_i].X, FDrops[_i].Y),     PointF(FDrops[_i].X, FDrops[_i].Y - _SparkHeight * 1.3), 1.0);
-              ACanvas.DrawLine(PointF(FDrops[_i].X + 2, FDrops[_i].Y), PointF(FDrops[_i].X + 5, FDrops[_i].Y - _SparkHeight),   1.0);
+              var _SparkHeight := 13.0 * _Drop.Depth * _SparkAlpha;  // 15.0 * _Drop[_i].Depth * _SparkAlpha;
+              ACanvas.DrawLine(PointF(_Drop.X - 2, _Drop.Y), PointF(_Drop.X - 5, _Drop.Y - _SparkHeight),   1.0);
+              ACanvas.DrawLine(PointF(_Drop.X, _Drop.Y),     PointF(_Drop.X, _Drop.Y - _SparkHeight * 1.3), 1.0);
+              ACanvas.DrawLine(PointF(_Drop.X + 2, _Drop.Y), PointF(_Drop.X + 5, _Drop.Y - _SparkHeight),   1.0);
             end;
         end;
     end;
@@ -423,14 +450,6 @@ begin
     { 4. Render Lightning Bolt terminating at Target }
     if (FLightningAlpha > 0) and (FLightningSegments.Count > 0) then
     begin
-      { Show Street Lamp }
-      with Form_Resources.Image3 do
-      begin
-        var _pos := PointF((FWidth - Bitmap.Width) / 2, (FHeight - Bitmap.Height) / 2);
-        ACanvas.DrawBitmap(Bitmap, RectF(0, 0, Bitmap.Width, Bitmap.Height),
-                                   RectF( _pos.X,  _pos.Y,  _pos.X+Bitmap.Width,  _pos.Y+Bitmap.Height), 0.5);
-      end;
-
       { Background Flash }
       _ColorRec := TAlphaColorRec.Create(TAlphaColorRec.White);
       _ColorRec.A := Round(FLightningAlpha * 0.2);
@@ -457,11 +476,6 @@ begin
         ACanvas.Stroke.Thickness := _Seg.Thickness;
         ACanvas.DrawLine(_Seg.P1, _Seg.P2, 1.0);
       end;
-
-      { Strike Impact Point - Deprecating }
-      //var LastPos := FLightningSegments.Last.P2;
-      //ACanvas.Fill.Color := TAlphaColorRec.White;
-      //ACanvas.FillEllipse(TRectF.Create(LastPos.X - 6, LastPos.Y - 6, LastPos.X + 6, LastPos.Y + 6), (FLightningAlpha/255));
     end;
   finally
     ACanvas.EndScene;
@@ -483,11 +497,44 @@ begin
   try
     { Clear the background }
     FBuffer.Canvas.Clear(TAlphaColorRec.Black);
-
-    { Draw the rain simulation onto the buffer }
-    //FRainEngine.Render(FBuffer.Canvas);
   finally
     FBuffer.Canvas.EndScene;
+  end;
+end;
+
+procedure TRainDropEngine.UpdateFrameWFrame(const ADrawFlag: Boolean; AMainanvas: TCanvas);
+begin
+  if ADrawFlag then
+  with Form_Resources do
+  begin
+    with Image_WindowFrame do
+      AMainanvas.DrawBitmap(Bitmap, RectF(0, 0, Bitmap.Width, Bitmap.Height), RectF(0, 0, FWidth, FHeight), 1.0);
+
+    if FLightningAlpha > 0 then
+      begin
+         with Image_AniSurprise do
+         AMainanvas.DrawBitmap(Bitmap, RectF(0, 0, Bitmap.Width, Bitmap.Height),
+                                       RectF(FWidth -  Bitmap.Width - 50,
+                                             FHeight - Bitmap.Height - 80,
+                                             FWidth -  50,
+                                             FHeight - 30),
+                                1.0);
+         FChangeCatDogFlag := 0;
+      end
+    else
+      begin
+        Inc(FChangeCatDogFlag);
+        { 30 fps x 30 sec = 900 }
+        var _timeflag :=  FChangeCatDogFlag mod 900;
+        var _Image := IIF.CastBool<TImage>((_timeflag  > 0 ) and (_timeflag < 600 ), Image_AniNormal, Image_AniFront);
+        with _Image do
+        AMainanvas.DrawBitmap(Bitmap, RectF(0, 0, Bitmap.Width, Bitmap.Height),
+                                      RectF(FWidth -  Bitmap.Width - 50,
+                                            FHeight - Bitmap.Height - 80,
+                                            FWidth - 50,
+                                            FHeight - 30),
+                               1.0);
+      end;
   end;
 end;
 
@@ -505,9 +552,7 @@ begin
   var _maskoffset: Integer := IIF.CastBool<Integer>(FMaskWindowFlag, 30, 0);
   MainCanvas.DrawBitmap(FBuffer, RectF(0, 0, FBuffer.Width, FBuffer.Height), RectF(0, 0, FWidth, FHeight-_maskoffset), 1.0);
   // 5. Show Windows Frame -------------------------------------------------- //
-    if FMaskWindowFlag then
-    with Form_Resources.Image1 do
-      MainCanvas.DrawBitmap(Bitmap, RectF(0, 0, Bitmap.Width, Bitmap.Height), RectF(0, 0, FWidth, FHeight), 1.0);
+  UpdateFrameWFrame(FMaskWindowFlag, MainCanvas);
 end;
 
 end.

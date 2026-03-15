@@ -228,8 +228,8 @@ begin
   if _Count > 0 then
   begin
     _Sum := _Sum / _Count;
-    var Desired := (_Sum - ABoid.Position).Normalize * FMaxSpeed;
-    Result := (Desired - ABoid.Velocity);
+    var _Desired := (_Sum - ABoid.Position).Normalize * FMaxSpeed;
+    Result := (_Desired - ABoid.Velocity);
     if Result.Length > FMaxForce then
       Result := Result.Normalize * FMaxForce;
   end
@@ -342,8 +342,8 @@ begin
   for var _Boid: TBoidsMouse in FBoids do
   with ACanvas do
     begin
-      _BoidColor := _Boid.Get_Color;
       _Angle := ArcTan2(_Boid.Velocity.Y, _Boid.Velocity.X);
+      _BoidColor := GetDirectionColor(_Angle); // = _Boid.Get_Color;
       _State := SaveState;
       try
         //  Create Matrix that rotates first, then moves to _Boid's position.

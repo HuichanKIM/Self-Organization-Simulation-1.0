@@ -279,14 +279,12 @@
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Icon_MainIcon>$(ProjectName).Artwork\Windows\AppIcon.ico</Icon_MainIcon>
         <Icns_MainIcns>$(ProjectName).Artwork\Windows\AppIcon.icns</Icns_MainIcns>
+        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=Huichan KIM;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="Unit_Main.pas">
-            <Form>MainForm</Form>
-        </DCCReference>
         <DCCReference Include="uCommons.pas"/>
         <DCCReference Include="uVicsekSim0.pas"/>
         <DCCReference Include="uBoidsSim0.pas"/>
@@ -299,9 +297,12 @@
         <DCCReference Include="uPhyllotaxisPlant.pas"/>
         <DCCReference Include="uAquarumSim.pas"/>
         <DCCReference Include="uRainDropEngine.pas"/>
+        <DCCReference Include="uCyclicPalette.pas"/>
+        <DCCReference Include="Unit_Main.pas">
+            <Form>MainForm</Form>
+        </DCCReference>
         <DCCReference Include="uResources.pas">
             <Form>Form_Resources</Form>
-            <FormType>fmx</FormType>
         </DCCReference>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

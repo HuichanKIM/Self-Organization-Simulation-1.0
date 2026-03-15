@@ -211,7 +211,7 @@ const
 const
   C_Aquarium_FIshs  = 150;  // Fixed ...
   C_RainDropsAmount = 500;
-  C_BGMSoundFile    = 'raindrops.mp3';
+  C_RaindDropBGM    = 'raindrops.mp3';
   C_RainDropAlias   = 'RainDrops';
 
 
@@ -930,11 +930,11 @@ begin
             FAquariumEngine := TAquariumEngine.Create(C_Aquarium_FIshs, PaintBox_Sim.LocalRect);
           end;
      ms_Raindrop:
-         if Assigned(FRaindropEngine) then
-           begin
-             FreeAndNil(FRaindropEngine);
-             FRaindropEngine := TRainDropEngine.Create(Round(PaintBox_Sim.Width), Round(PaintBox_Sim.Height), C_RainDropsAmount);
-            end;
+        if Assigned(FRaindropEngine) then
+          begin
+            FreeAndNil(FRaindropEngine);
+            FRaindropEngine := TRainDropEngine.Create(Round(PaintBox_Sim.Width), Round(PaintBox_Sim.Height), C_RainDropsAmount);
+           end;
   end;
 
   Timer_Engine.Interval := C_TmInterval[FModeSelection];
@@ -1142,7 +1142,7 @@ begin
       // 1. Close any existing device before opening a new one
       mciSendString(PChar('close ' + C_RainDropAlias), nil, 0, 0);
       // 2. Open the file as 'mpegvideo' type with an alias 'MyMusic'
-      if mciSendString(PChar('open "' + string(C_BGMSoundFile) + '" type mpegvideo alias ' + C_RainDropAlias), nil, 0, 0) = 0 then
+      if mciSendString(PChar('open "' + string(C_RaindDropBGM ) + '" type mpegvideo alias ' + C_RainDropAlias), nil, 0, 0) = 0 then
         begin
           // 3. Start playback with 'notify' flag to receive a message when finished
           // Pass the Form's Handle to receive the MM_MCINOTIFY message

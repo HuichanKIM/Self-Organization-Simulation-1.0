@@ -54,11 +54,12 @@ function IsVectorEmpty(const V: TVector): Boolean; inline;
 function Limit_Point(V: TPointF; Max: Single): TPointF;
 function Set_Mag(V: TPointF; Mag: Single): TPointF;
 function GetColorFromHSL(AHH, ASS, ALL: Single): TAlphaColor;
-function GetDirectionColor(Theta: Double): TAlphaColor;
+function GetDirectionColor(const Angle: Single): TAlphaColor; overload;
+function GetDirectionColor(const Angle, Speed: Single): TAlphaColor;  overload;
 function CaptureComponent(const AControl: TControl; const ASavefile: string): Boolean;
 
-function  ReadAllText_Unicode(const AFilePath: string=''): string;
-function  WriteAllText_Unicode(const AFilePath, AContents: string): Boolean;
+function ReadAllText_Unicode(const AFilePath: string=''): string;
+function WriteAllText_Unicode(const AFilePath, AContents: string): Boolean;
 
 implementation
 
@@ -214,10 +215,43 @@ end;
 
 function GetColorFromHSL(AHH, ASS, ALL: Single): TAlphaColor;
 begin
-  Result := HSLtoRGB(AHH, ASS, ALL);
+  Result :=  SYstem.UIConsts.HSLtoRGB(AHH, ASS, ALL);
 end;
 
-function GetDirectionColor(Theta: Double): TAlphaColor;
+{ Returns a color based on direction angle using HSL color model
+   Creates rainbow-like directional coloring often used in generative art }
+
+function GetDirectionColor(const Angle: Single): TAlphaColor;  overload;
+begin
+  // Normalize angle to 0..1 range for hue
+  var _Hue := Frac((Angle / (2 * Pi)) + 0.5);   // 0.0 ~ 1.0 범위의 Hue
+
+  // 1. HSL → RGB conversion (System.UIConsts unit required)
+  // Hue: 0..1, Saturation: 0.85, Lightness: 0.65 → vivid but not too bright
+  Result := SYstem.UIConsts.HSLtoRGB(_Hue, 0.85, 0.65);     // Alpha = $FF Auto apply
+
+  // 2. with TAlphaColorF
+  // var _AF := TAlphaColorF.Create(HSLtoRGB(_Hue, 0.85, 0.65));
+  // Result := _AF.ToAlphaColor;
+end;
+
+function GetDirectionColor(const Angle, Speed: Single): TAlphaColor;  overload;
+begin
+  //// Normalize angle to 0..1 range for hue
+  var _Hue := Frac((Angle / (2 * Pi)) + 0.5);   // 0.0 ~ 1.0 범위의 Hue
+
+  // 1. HSL → RGB conversion (System.UIConsts unit required)
+  // Hue: 0..1, Saturation: 0.85, Lightness: 0.65 → vivid but not too bright
+  Result := SYstem.UIConsts.HSLtoRGB(_Hue, 0.85, 0.65);     // Alpha = $FF  Auto apply
+
+  // 2. with TAlphaColorF
+  // var _AF := TAlphaColorF.Create(HSLtoRGB(_Hue, 0.85, 0.65));
+  // Result := _AF.ToAlphaColor;
+end;
+
+{ Deprecating ... }
+
+function GetDirectionColor2(const Theta: Double): TAlphaColor;
 var
   _R, _G, _B: Byte;
 begin

@@ -7,7 +7,6 @@ uses
   WinApi.Windows,
   FMX.Forms,
   FMX.Types,
-  Unit_Main in 'Unit_Main.pas' {MainForm},
   uCommons in 'uCommons.pas',
   uVicsekSim0 in 'uVicsekSim0.pas',
   uBoidsSim0 in 'uBoidsSim0.pas',
@@ -20,6 +19,8 @@ uses
   uPhyllotaxisPlant in 'uPhyllotaxisPlant.pas',
   uAquarumSim in 'uAquarumSim.pas',
   uRainDropEngine in 'uRainDropEngine.pas',
+  uCyclicPalette in 'uCyclicPalette.pas',
+  Unit_Main in 'Unit_Main.pas' {MainForm},
   uResources in 'uResources.pas' {Form_Resources};
 
 {$R *.res}
