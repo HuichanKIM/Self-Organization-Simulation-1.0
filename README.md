@@ -57,5 +57,5 @@ The simulation explores how complex global patterns emerge from simple local int
 * Sample 7 (Extra - Aquarium)
 ![./Images/Snapshot_Aqua](./Images/Snapshot_Aqua.png)
 
-* Sample 8 (Extra - RainDrops / Thunder with Sound effects)
+* Sample 8 (Extra - RainDrops / Lightning / Thunder with Sound effects)
 ![./Images/RaindropVisual](./Images/RaindropVisual.png)
