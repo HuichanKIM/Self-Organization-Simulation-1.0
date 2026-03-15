@@ -59,3 +59,4 @@ The simulation explores how complex global patterns emerge from simple local int
 
 * Sample 8 (Extra - RainDrops / Lightning / Thunder with Sound effects)
 ![./Images/RaindropVisual](./Images/RaindropVisual.png)
+![./Images/RaindropVisual](./Images/RaindropVisual2.png)
